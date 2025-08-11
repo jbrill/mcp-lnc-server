@@ -1,0 +1,43 @@
+# Binaries
+mcp-lnc-server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+vendor-patch/
+
+# Environment files
+.env
+.env.local
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp

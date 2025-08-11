@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lnc-mcp-server": {
+      "command": "/path/to/mcp-lnc-server/mcp-lnc-server",
+      "args": []
+    }
+  }
+}
