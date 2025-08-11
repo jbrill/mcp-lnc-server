@@ -1,12 +1,15 @@
 // Package services manages all Lightning Network services and their lifecycle.
 //
-// Following LND contribution guidelines, this package provides clean
-// service management with proper error handling, structured logging,
-// and adherence to Go best practices.
+// Following LND contribution guidelines, this package provides clean.
+// Service management with proper error handling, structured logging,.
+// And adherence to Go best practices.
 package services
 
 import (
+	"context"
+
 	"github.com/jbrill/mcp-lnc-server/internal/errors"
+	"github.com/jbrill/mcp-lnc-server/internal/logging"
 	"github.com/jbrill/mcp-lnc-server/tools"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/invoicesrpc"
@@ -16,17 +19,17 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Manager manages all Lightning Network services and their lifecycle
+// Manager manages all Lightning Network services and their lifecycle.
 type Manager struct {
 	logger *zap.Logger
 
-	// Global connection and clients
+	// Global connection and clients.
 	lncConnection   *grpc.ClientConn
 	lightningClient lnrpc.LightningClient
 	invoicesClient  invoicesrpc.InvoicesClient
 	routerClient    routerrpc.RouterClient
 
-	// Services
+	// Services.
 	connectionService *tools.ConnectionService
 	invoiceService    *tools.InvoiceService
 	channelService    *tools.ChannelService
@@ -36,7 +39,7 @@ type Manager struct {
 	nodeService       *tools.NodeService
 }
 
-// NewManager creates a new service manager
+// NewManager creates a new service manager.
 func NewManager(logger *zap.Logger) *Manager {
 	return &Manager{
 		logger: logger,
@@ -45,8 +48,8 @@ func NewManager(logger *zap.Logger) *Manager {
 
 // InitializeServices initializes all services with nil clients.
 //
-// Services start with nil clients and are updated when connection is
-// established through the onLNCConnectionEstablished callback.
+// Services start with nil clients and are updated when connection is.
+// Established through the onLNCConnectionEstablished callback.
 func (m *Manager) InitializeServices() {
 	m.logger.Info("Initializing services...")
 
@@ -55,7 +58,7 @@ func (m *Manager) InitializeServices() {
 		m.onLNCConnectionEstablished)
 
 	// Initialize all other services with nil clients (they'll check
-	// for connection)
+	// For connection).
 	m.invoiceService = tools.NewInvoiceService(nil)
 	m.channelService = tools.NewChannelService(nil)
 	m.paymentService = tools.NewPaymentService(nil, nil)
@@ -68,8 +71,8 @@ func (m *Manager) InitializeServices() {
 
 // RegisterTools registers all tools with the MCP server.
 //
-// This method follows LND patterns by using structured logging and
-// providing detailed tool registration information.
+// This method follows LND patterns by using structured logging and.
+// Providing detailed tool registration information.
 func (m *Manager) RegisterTools(mcpServer *server.MCPServer) error {
 	if mcpServer == nil {
 		return errors.New(errors.ErrCodeUnknown,
@@ -141,10 +144,11 @@ func (m *Manager) RegisterTools(mcpServer *server.MCPServer) error {
 	return nil
 }
 
-// onLNCConnectionEstablished is called when LNC connection is
-// established
+// OnLNCConnectionEstablished is called when LNC connection is.
+// Established.
 func (m *Manager) onLNCConnectionEstablished(conn *grpc.ClientConn) {
-	m.logger.Info("LNC connection established successfully")
+	logger := logging.LogWithContext(context.Background())
+	logger.Info("LNC connection established successfully")
 
 	m.lncConnection = conn
 	m.lightningClient = lnrpc.NewLightningClient(conn)
@@ -152,7 +156,7 @@ func (m *Manager) onLNCConnectionEstablished(conn *grpc.ClientConn) {
 	m.routerClient = routerrpc.NewRouterClient(conn)
 
 	// Update existing services with new connection (they're already
-	// registered)
+	// Registered).
 	m.invoiceService.LightningClient = m.lightningClient
 	m.channelService.LightningClient = m.lightningClient
 	m.paymentService.LightningClient = m.lightningClient
@@ -161,13 +165,12 @@ func (m *Manager) onLNCConnectionEstablished(conn *grpc.ClientConn) {
 	m.peerService.LightningClient = m.lightningClient
 	m.nodeService.LightningClient = m.lightningClient
 
-	m.logger.Info(
-		"All Lightning Network services updated with new connection")
+	logger.Info("All Lightning Network services updated with new connection")
 }
 
 // Shutdown gracefully shuts down all services and closes connections.
 //
-// This method ensures proper cleanup of all resources, following
+// This method ensures proper cleanup of all resources, following.
 // LND patterns for graceful shutdown with error logging.
 func (m *Manager) Shutdown() error {
 	m.logger.Info("Shutting down service manager...")

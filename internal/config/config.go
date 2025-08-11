@@ -1,7 +1,7 @@
 // Package config provides configuration management for the MCP LNC server.
 //
-// This package handles loading and managing configuration from environment
-// variables with sensible defaults for development and production environments.
+// This package handles loading and managing configuration from environment.
+// Variables with sensible defaults for development and production environments.
 package config
 
 import (
@@ -29,8 +29,8 @@ type Config struct {
 	ShutdownTimeout      time.Duration
 }
 
-// LoadConfig loads configuration from environment variables with
-// sensible defaults.
+// LoadConfig loads configuration from environment variables with.
+// Sensible defaults.
 func LoadConfig() *Config {
 	cfg := &Config{
 		// Server defaults.
@@ -57,8 +57,8 @@ func LoadConfig() *Config {
 	return cfg
 }
 
-// getEnvString retrieves a string value from environment variables
-// with a default fallback.
+// GetEnvString retrieves a string value from environment variables.
+// With a default fallback.
 func getEnvString(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -66,8 +66,8 @@ func getEnvString(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getEnvInt retrieves an integer value from environment variables
-// with a default fallback.
+// GetEnvInt retrieves an integer value from environment variables.
+// With a default fallback.
 func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if parsed, err := strconv.Atoi(value); err == nil {
@@ -77,8 +77,8 @@ func getEnvInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-// getEnvBool retrieves a boolean value from environment variables
-// with a default fallback.
+// GetEnvBool retrieves a boolean value from environment variables.
+// With a default fallback.
 func getEnvBool(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if parsed, err := strconv.ParseBool(value); err == nil {
@@ -88,8 +88,8 @@ func getEnvBool(key string, defaultValue bool) bool {
 	return defaultValue
 }
 
-// getEnvDuration retrieves a duration value from environment variables
-// with a default fallback.
+// GetEnvDuration retrieves a duration value from environment variables.
+// With a default fallback.
 func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if parsed, err := time.ParseDuration(value); err == nil {

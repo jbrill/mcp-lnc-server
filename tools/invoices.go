@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
 
+	lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
+	"github.com/jbrill/mcp-lnc-server/internal/logging"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/mark3labs/mcp-go/mcp"
+	"go.uber.org/zap"
 )
 
 // InvoiceService handles Lightning invoice operations.
@@ -58,9 +62,18 @@ func (s *InvoiceService) CreateInvoiceTool() mcp.Tool {
 // HandleCreateInvoice handles the create invoice request.
 func (s *InvoiceService) HandleCreateInvoice(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Create request context with tracing
+	reqCtx := lnccontext.New(ctx, "create_invoice", 30*time.Second)
+	logger := logging.LogWithContext(reqCtx)
+	
+	logger.Info("Creating Lightning invoice",
+		zap.Any("params", request.Params.Arguments))
+	
 	if s.LightningClient == nil {
+		logger.Error("Lightning client not available")
 		return mcp.NewToolResultError(
-			"Not connected to Lightning node. Use lnc_connect first."), nil
+			"Not connected to Lightning node. " +
+				"Use lnc_connect first."), nil
 	}
 
 	// Parse and validate amount
@@ -90,16 +103,20 @@ func (s *InvoiceService) HandleCreateInvoice(ctx context.Context,
 	private, _ := request.Params.Arguments["private"].(bool)
 
 	// Create invoice
-	invoice, err := s.LightningClient.AddInvoice(ctx, &lnrpc.Invoice{
+	invoice, err := s.LightningClient.AddInvoice(reqCtx, &lnrpc.Invoice{
 		Value:   int64(amount),
 		Memo:    memo,
 		Expiry:  int64(expiry),
 		Private: private,
 	})
 	if err != nil {
+		logger.Error("Failed to create invoice", zap.Error(err))
 		return mcp.NewToolResultError(fmt.Sprintf(
 			"Failed to create invoice: %v", err)), nil
 	}
+	
+	logger.Info("Invoice created successfully",
+		zap.String("payment_hash", hex.EncodeToString(invoice.RHash)))
 
 	return mcp.NewToolResultText(fmt.Sprintf(`{
 		"payment_request": "%s",
@@ -144,9 +161,17 @@ func (s *InvoiceService) DecodeInvoiceTool() mcp.Tool {
 // HandleDecodeInvoice handles the decode invoice request.
 func (s *InvoiceService) HandleDecodeInvoice(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Create request context with tracing
+	reqCtx := lnccontext.New(ctx, "decode_invoice", 15*time.Second)
+	logger := logging.LogWithContext(reqCtx)
+	
+	logger.Info("Decoding Lightning invoice")
+	
 	if s.LightningClient == nil {
+		logger.Error("Lightning client not available")
 		return mcp.NewToolResultError(
-			"Not connected to Lightning node. Use lnc_connect first."), nil
+			"Not connected to Lightning node. " +
+				"Use lnc_connect first."), nil
 	}
 
 	invoice, ok := request.Params.Arguments["invoice"].(string)
@@ -160,13 +185,17 @@ func (s *InvoiceService) HandleDecodeInvoice(ctx context.Context,
 	}
 
 	// Decode invoice
-	payReq, err := s.LightningClient.DecodePayReq(ctx, &lnrpc.PayReqString{
+	payReq, err := s.LightningClient.DecodePayReq(reqCtx, &lnrpc.PayReqString{
 		PayReq: invoice,
 	})
 	if err != nil {
+		logger.Error("Failed to decode invoice", zap.Error(err))
 		return mcp.NewToolResultError(fmt.Sprintf(
 			"Failed to decode invoice: %v", err)), nil
 	}
+	
+	logger.Info("Invoice decoded successfully",
+		zap.String("destination", payReq.Destination))
 
 	return mcp.NewToolResultText(fmt.Sprintf(`{
 		"destination": "%s",
@@ -195,7 +224,7 @@ func (s *InvoiceService) HandleDecodeInvoice(ctx context.Context,
 	)), nil
 }
 
-// isValidBolt11 performs basic BOLT11 format validation.
+// IsValidBolt11 performs basic BOLT11 format validation.
 func isValidBolt11(invoice string) bool {
 	if len(invoice) < 10 {
 		return false

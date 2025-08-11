@@ -20,7 +20,7 @@ func TestManager_Creation(t *testing.T) {
 	assert.NotNil(t, manager)
 	assert.Equal(t, zap.L(), manager.logger)
 
-	// Initialize services to test them
+	// Initialize services to test them.
 	manager.InitializeServices()
 	assert.NotNil(t, manager.invoiceService)
 	assert.NotNil(t, manager.connectionService)
@@ -61,7 +61,7 @@ func TestManager_ConnectionCallback(t *testing.T) {
 	manager.InitializeServices()
 
 	// Create a mock connection - this would normally be a real gRPC connection
-	// but for testing we just verify the callback doesn't panic
+	// But for testing we just verify the callback doesn't panic.
 	mockConn := &grpc.ClientConn{}
 
 	// Call the connection callback - this is private so we can't test it directly
@@ -70,7 +70,7 @@ func TestManager_ConnectionCallback(t *testing.T) {
 	assert.NotNil(t, manager.connectionService)
 
 	// In a real scenario, mockConn would be passed to onLNCConnectionEstablished
-	// which would update all service clients
+	// Which would update all service clients.
 	_ = mockConn
 }
 

@@ -1,8 +1,8 @@
 // Package interfaces defines the core interfaces for the MCP LNC server.
 //
-// Following Go best practices, we define interfaces here that are
-// implemented by concrete types. This allows for better testing, dependency
-// injection, and loose coupling between components.
+// Following Go best practices, we define interfaces here that are.
+// Implemented by concrete types. This allows for better testing, dependency.
+// Injection, and loose coupling between components.
 package interfaces
 
 import (
@@ -17,8 +17,8 @@ import (
 
 // Logger defines the logging interface used throughout the application.
 //
-// This allows us to swap out logging implementations or mock for
-// testing.
+// This allows us to swap out logging implementations or mock for.
+// Testing.
 type Logger interface {
 	Debug(msg string, fields ...zap.Field)
 	Info(msg string, fields ...zap.Field)
@@ -30,8 +30,8 @@ type Logger interface {
 
 // LightningClient defines the interface for Lightning Network operations.
 //
-// This wraps the LND gRPC client to allow for easier testing and
-// mocking.
+// This wraps the LND gRPC client to allow for easier testing and.
+// Mocking.
 type LightningClient interface {
 	GetInfo(ctx context.Context,
 		req *lnrpc.GetInfoRequest) (*lnrpc.GetInfoResponse, error)

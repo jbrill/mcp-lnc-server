@@ -428,7 +428,7 @@ func (s *OnChainService) HandleEstimateFee(ctx context.Context,
 	}`, toJSONStringOnChain(estimates))), nil
 }
 
-// toJSONStringOnChain converts an interface to JSON string for on-chain data output.
+// ToJSONStringOnChain converts an interface to JSON string for on-chain data output.
 func toJSONStringOnChain(v any) string {
 	// Simplified JSON conversion - in production use proper JSON marshaling
 	return fmt.Sprintf("%+v", v)

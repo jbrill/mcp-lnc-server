@@ -1,9 +1,9 @@
-// Package errors defines structured error types used throughout the
+// Package errors defines structured error types used throughout the.
 // MCP LNC server application.
 //
-// Following LND patterns, we define specific error types that provide
-// more context than generic errors and allow for better error handling
-// and user experience.
+// Following LND patterns, we define specific error types that provide.
+// More context than generic errors and allow for better error handling.
+// And user experience.
 package errors
 
 import (
@@ -27,14 +27,14 @@ const (
 	ErrCodeTimeout ErrorCode = 3
 
 	// ErrCodeNotConnected represents attempting operations without
-	// connection.
+	// Connection.
 	ErrCodeNotConnected ErrorCode = 4
 
 	// ErrCodeInvalidInvoice represents an invalid invoice format.
 	ErrCodeInvalidInvoice ErrorCode = 5
 
 	// ErrCodeInsufficientBalance represents insufficient balance for
-	// operation.
+	// Operation.
 	ErrCodeInsufficientBalance ErrorCode = 6
 
 	// ErrCodeInvalidAddress represents an invalid address format.
@@ -107,8 +107,8 @@ func Wrap(cause error, code ErrorCode, message string) *Error {
 	}
 }
 
-// Wrapf creates a new structured error with formatted message that
-// wraps another error.
+// Wrapf creates a new structured error with formatted message that.
+// Wraps another error.
 func Wrapf(cause error, code ErrorCode, format string,
 	args ...interface{}) *Error {
 	return &Error{

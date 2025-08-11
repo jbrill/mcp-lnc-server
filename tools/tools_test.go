@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Test InvoiceService basic functionality
+// Test InvoiceService basic functionality.
 func TestInvoiceService_ToolCreation(t *testing.T) {
 	service := NewInvoiceService(nil)
 
@@ -20,12 +20,12 @@ func TestInvoiceService_ToolCreation(t *testing.T) {
 		assert.Contains(t, tool.Description, "Create a Lightning Network invoice")
 		assert.Equal(t, "object", tool.InputSchema.Type)
 
-		// Check required fields exist
+		// Check required fields exist.
 		props := tool.InputSchema.Properties
 		assert.Contains(t, props, "amount")
 		assert.Contains(t, props, "memo")
 
-		// Verify amount field structure
+		// Verify amount field structure.
 		amountField, ok := props["amount"].(map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, "number", amountField["type"])
@@ -38,11 +38,11 @@ func TestInvoiceService_ToolCreation(t *testing.T) {
 		assert.Contains(t, tool.Description, "Decode a BOLT11 Lightning invoice")
 		assert.Equal(t, "object", tool.InputSchema.Type)
 
-		// Check required fields
+		// Check required fields.
 		props := tool.InputSchema.Properties
 		assert.Contains(t, props, "invoice")
 
-		// Verify invoice field structure
+		// Verify invoice field structure.
 		invoiceField, ok := props["invoice"].(map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, "string", invoiceField["type"])
@@ -50,17 +50,17 @@ func TestInvoiceService_ToolCreation(t *testing.T) {
 }
 
 func TestInvoiceService_ServiceManagement(t *testing.T) {
-	// Test service creation
+	// Test service creation.
 	service := NewInvoiceService(nil)
 	assert.NotNil(t, service)
 	assert.Nil(t, service.LightningClient)
 
-	// Test service with client update
-	service.LightningClient = nil // Simulate setting client later
+	// Test service with client update.
+	service.LightningClient = nil // Simulate setting client later.
 	assert.Nil(t, service.LightningClient)
 }
 
-// Test ConnectionService basic functionality
+// Test ConnectionService basic functionality.
 func TestConnectionService_ToolCreation(t *testing.T) {
 	callback := func(conn *grpc.ClientConn) {}
 	service := NewConnectionService(callback)
@@ -71,32 +71,32 @@ func TestConnectionService_ToolCreation(t *testing.T) {
 		assert.Contains(t, tool.Description, "Connect to a Lightning node")
 		assert.Equal(t, "object", tool.InputSchema.Type)
 
-		// Check required fields
+		// Check required fields.
 		props := tool.InputSchema.Properties
 		assert.Contains(t, props, "pairingPhrase")
 
-		// Verify pairingPhrase field structure
+		// Verify pairingPhrase field structure.
 		pairingField, ok := props["pairingPhrase"].(map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, "string", pairingField["type"])
 
-		// Check optional fields
+		// Check optional fields.
 		assert.Contains(t, props, "mailbox")
 		assert.Contains(t, props, "devMode")
 		assert.Contains(t, props, "password")
 
-		// Verify required fields list contains pairingPhrase
+		// Verify required fields list contains pairingPhrase.
 		require.Contains(t, tool.InputSchema.Required, "pairingPhrase")
 	})
 
 	t.Run("disconnect_tool", func(t *testing.T) {
 		tool := service.DisconnectTool()
 		assert.Equal(t, "lnc_disconnect", tool.Name)
-		assert.Contains(t, tool.Description, 
+		assert.Contains(t, tool.Description,
 			"Disconnect from the Lightning node")
 		assert.Equal(t, "object", tool.InputSchema.Type)
 
-		// Disconnect tool should have no required parameters
+		// Disconnect tool should have no required parameters.
 		assert.Equal(t, 0, len(tool.InputSchema.Required))
 	})
 }
@@ -106,7 +106,7 @@ func TestConnectionService_ServiceManagement(t *testing.T) {
 	service := NewConnectionService(callback)
 	assert.NotNil(t, service)
 
-	// Test that we can create tools
+	// Test that we can create tools.
 	connectTool := service.ConnectTool()
 	disconnectTool := service.DisconnectTool()
 
@@ -115,7 +115,7 @@ func TestConnectionService_ServiceManagement(t *testing.T) {
 	assert.NotEqual(t, connectTool.Name, disconnectTool.Name)
 }
 
-// Test helper functions and utilities
+// Test helper functions and utilities.
 func TestIsValidBolt11(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -168,7 +168,7 @@ func TestIsValidBolt11(t *testing.T) {
 }
 
 func TestPairingPhraseValidation(t *testing.T) {
-	// Test the word counting logic used in connection service
+	// Test the word counting logic used in connection service.
 	tests := []struct {
 		name          string
 		phrase        string
@@ -188,8 +188,8 @@ func TestPairingPhraseValidation(t *testing.T) {
 			expectedWords: 9,
 		},
 		{
-			name:          "11_words",
-			phrase:        "one two three four five six seven eight nine ten " +
+			name: "11_words",
+			phrase: "one two three four five six seven eight nine ten " +
 				"eleven",
 			expectValid:   false,
 			expectedWords: 11,
@@ -197,13 +197,13 @@ func TestPairingPhraseValidation(t *testing.T) {
 		{
 			name:          "extra_spaces_handled",
 			phrase:        "one  two   three four five six seven eight nine ten",
-			expectValid:   true, // strings.Fields handles extra spaces
+			expectValid:   true, // strings.Fields handles extra spaces.
 			expectedWords: 10,
 		},
 		{
 			name:          "leading_trailing_spaces",
 			phrase:        " one two three four five six seven eight nine ten ",
-			expectValid:   true, // strings.Fields trims spaces
+			expectValid:   true, // strings.Fields trims spaces.
 			expectedWords: 10,
 		},
 		{
@@ -233,12 +233,12 @@ func TestPairingPhraseValidation(t *testing.T) {
 	}
 }
 
-// Test service integration
+// Test service integration.
 func TestServiceIntegration(t *testing.T) {
 	t.Run("invoice_service_complete", func(t *testing.T) {
 		service := NewInvoiceService(nil)
 
-		// Verify tools are created correctly
+		// Verify tools are created correctly.
 		createTool := service.CreateInvoiceTool()
 		decodeTool := service.DecodeInvoiceTool()
 
@@ -246,7 +246,7 @@ func TestServiceIntegration(t *testing.T) {
 		assert.NotEmpty(t, decodeTool.Name)
 		assert.NotEqual(t, createTool.Name, decodeTool.Name)
 
-		// Test service state management
+		// Test service state management.
 		assert.Nil(t, service.LightningClient)
 	})
 
@@ -261,7 +261,7 @@ func TestServiceIntegration(t *testing.T) {
 		assert.NotNil(t, disconnectTool)
 		assert.NotEqual(t, connectTool.Name, disconnectTool.Name)
 
-		// Test tools have proper structure
+		// Test tools have proper structure.
 		assert.NotEmpty(t, connectTool.Name)
 		assert.NotEmpty(t, connectTool.Description)
 		assert.NotNil(t, connectTool.InputSchema)
@@ -272,7 +272,7 @@ func TestServiceIntegration(t *testing.T) {
 	})
 }
 
-// Test helper to create test invoice
+// Test helper to create test invoice.
 func createTestInvoice(amount int64, memo string) *lnrpc.Invoice {
 	return &lnrpc.Invoice{
 		ValueMsat: amount * 1000,
@@ -288,7 +288,7 @@ func TestCreateTestInvoice(t *testing.T) {
 	assert.Equal(t, int64(3600), invoice.Expiry)
 }
 
-// Benchmark tests for performance
+// Benchmark tests for performance.
 func BenchmarkInvoiceService_CreateInvoiceTool(b *testing.B) {
 	service := NewInvoiceService(nil)
 

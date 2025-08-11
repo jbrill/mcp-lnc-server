@@ -157,7 +157,7 @@ func (s *NodeService) HandleGetBalance(ctx context.Context,
 	)), nil
 }
 
-// chainNames extracts chain names from Chain slice.
+// ChainNames extracts chain names from Chain slice.
 func chainNames(chains []*lnrpc.Chain) []string {
 	names := make([]string, len(chains))
 	for i, chain := range chains {

@@ -406,7 +406,7 @@ func (s *PeerService) HandleGetNodeInfo(ctx context.Context,
 	return mcp.NewToolResultText(toJSONStringPeers(nodeData)), nil
 }
 
-// formatPeerErrors formats peer error information for JSON output.
+// FormatPeerErrors formats peer error information for JSON output.
 func formatPeerErrors(errors []*lnrpc.TimestampedError,
 ) []map[string]any {
 	result := make([]map[string]any, len(errors))
@@ -419,7 +419,7 @@ func formatPeerErrors(errors []*lnrpc.TimestampedError,
 	return result
 }
 
-// toJSONStringPeers converts an interface to JSON string for peer data output.
+// ToJSONStringPeers converts an interface to JSON string for peer data output.
 func toJSONStringPeers(v any) string {
 	// Simplified JSON conversion - in production use proper JSON marshaling
 	return fmt.Sprintf("%+v", v)

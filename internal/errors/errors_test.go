@@ -9,7 +9,7 @@ import (
 
 // Test error code constants.
 func TestErrorCodes(t *testing.T) {
-	// Verify error codes are defined
+	// Verify error codes are defined.
 	assert.Equal(t, ErrorCode(0), ErrCodeUnknown)
 	assert.Equal(t, ErrorCode(1), ErrCodeConnectionFailed)
 	assert.Equal(t, ErrorCode(2), ErrCodeInvalidPairingPhrase)
@@ -29,7 +29,7 @@ func TestNew(t *testing.T) {
 	assert.Contains(t, err.Error(), "test error message")
 	assert.Contains(t, err.Error(), "Timeout")
 	
-	// Test error structure
+	// Test error structure.
 	assert.Equal(t, ErrCodeTimeout, err.Code)
 	assert.Equal(t, "test error message", err.Message)
 	assert.Nil(t, err.Cause)
@@ -94,12 +94,12 @@ func TestErrorMessageFormatting(t *testing.T) {
 
 // Test error wrapping chain.
 func TestErrorWrappingChain(t *testing.T) {
-	// Create a chain of wrapped errors
+	// Create a chain of wrapped errors.
 	originalErr := errors.New("database connection failed")
 	level1Err := Wrap(originalErr, ErrCodeConnectionFailed, "service unavailable")
 	level2Err := Wrap(level1Err, ErrCodeUnknown, "request processing failed")
 	
-	// Verify all messages are present in the final error
+	// Verify all messages are present in the final error.
 	finalError := level2Err.Error()
 	assert.Contains(t, finalError, "database connection failed")
 	assert.Contains(t, finalError, "service unavailable")
@@ -116,7 +116,7 @@ func TestErrorInterface(t *testing.T) {
 		Cause:   nil,
 	}
 
-	// Should implement error interface
+	// Should implement error interface.
 	var _ error = err
 	
 	assert.Equal(t, "[InvalidInvoice] test message", err.Error())
@@ -192,11 +192,11 @@ func TestIs(t *testing.T) {
 	assert.True(t, Is(err, ErrCodeTimeout))
 	assert.False(t, Is(err, ErrCodeUnknown))
 	
-	// Test with non-Error type
+	// Test with non-Error type.
 	stdErr := errors.New("standard error")
 	assert.False(t, Is(stdErr, ErrCodeTimeout))
 	
-	// Test with nil
+	// Test with nil.
 	assert.False(t, Is(nil, ErrCodeTimeout))
 }
 
@@ -209,12 +209,12 @@ func TestAs(t *testing.T) {
 	assert.Equal(t, ErrCodeInvalidInvoice, e.Code)
 	assert.Equal(t, "invalid invoice", e.Message)
 	
-	// Test with non-Error type
+	// Test with non-Error type.
 	stdErr := errors.New("standard error")
 	var e2 *Error
 	assert.False(t, As(stdErr, &e2))
 	
-	// Test with nil
+	// Test with nil.
 	var e3 *Error
 	assert.False(t, As(nil, &e3))
 }

@@ -1,7 +1,7 @@
 // Package tools provides MCP tool implementations for Lightning Network operations.
 //
-// This package contains all the MCP tools that allow AI assistants to interact
-// with Lightning Network nodes through various service interfaces.
+// This package contains all the MCP tools that allow AI assistants to interact.
+// With Lightning Network nodes through various service interfaces.
 package tools
 
 import (
@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
+	"github.com/jbrill/mcp-lnc-server/internal/logging"
 	"github.com/lightninglabs/lightning-node-connect/mailbox"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -75,19 +77,35 @@ func (s *ConnectionService) ConnectTool() mcp.Tool {
 // HandleConnect handles the LNC connection request.
 func (s *ConnectionService) HandleConnect(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Create request context with tracing
+	reqCtx := lnccontext.New(ctx, "lnc_connect", 45*time.Second)
+	logger := logging.LogWithContext(reqCtx)
+	
+	logger.Info("Starting LNC connection request",
+		zap.Any("params", request.Params.Arguments))
+	
+	defer func() {
+		logger.Info("Connection request completed",
+			zap.Duration("total_duration", reqCtx.Duration()))
+	}()
+	
 	pairingPhrase, ok := request.Params.Arguments["pairingPhrase"].(string)
 	if !ok {
+		logger.Error("Missing pairing phrase in request")
 		return mcp.NewToolResultError("pairingPhrase is required"), nil
 	}
 
 	password, ok := request.Params.Arguments["password"].(string)
 	if !ok {
+		logger.Error("Missing password in request")
 		return mcp.NewToolResultError("password is required"), nil
 	}
 
 	// Validate pairing phrase format
 	words := strings.Split(strings.TrimSpace(pairingPhrase), " ")
 	if len(words) != 10 {
+		logger.Error("Invalid pairing phrase format",
+			zap.Int("word_count", len(words)))
 		return mcp.NewToolResultError(
 			"pairingPhrase must contain exactly 10 words"), nil
 	}
@@ -126,22 +144,21 @@ func (s *ConnectionService) HandleConnect(ctx context.Context,
 		}
 	}
 
-	// Create connection context with timeout
-	connectCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	// Log connection attempt
-	zap.L().Info("Attempting LNC connection",
+	// Use request context for connection (it already has timeout)
+	logger.Info("Attempting LNC connection",
 		zap.String("mailbox", mailboxServer),
 		zap.Bool("devMode", devMode),
 		zap.Bool("insecure", insecure),
+		zap.Duration("timeout", timeout),
 	)
 
 	// Establish LNC connection
-	conn, nodeInfo, err := s.connectToLNC(connectCtx, pairingPhrase,
+	conn, nodeInfo, err := s.connectToLNC(reqCtx, pairingPhrase,
 		password, mailboxServer, devMode, insecure)
 	if err != nil {
-		zap.L().Error("LNC connection failed", zap.Error(err))
+		logger.Error("LNC connection failed",
+			zap.Error(err),
+			zap.Duration("failed_after", reqCtx.Duration()))
 		return mcp.NewToolResultError(fmt.Sprintf(
 			"Failed to connect to Lightning node: %v", err)), nil
 	}
@@ -149,10 +166,19 @@ func (s *ConnectionService) HandleConnect(ctx context.Context,
 	// Store connection
 	s.Connection = conn
 
+	// Add node ID to context for future operations
+	reqCtx = reqCtx.WithNode(nodeInfo.IdentityPubkey)
+	
 	// Notify main server of new connection
 	if s.ConnectionCallback != nil {
 		s.ConnectionCallback(conn)
 	}
+	
+	logger.Info("Successfully connected to Lightning node",
+		zap.String("node_pubkey", nodeInfo.IdentityPubkey),
+		zap.String("alias", nodeInfo.Alias),
+		zap.Uint32("num_channels", nodeInfo.NumActiveChannels),
+		zap.Uint32("num_peers", nodeInfo.NumPeers))
 
 	// Return success response
 	return mcp.NewToolResultText(fmt.Sprintf(`{
@@ -167,11 +193,16 @@ func (s *ConnectionService) HandleConnect(ctx context.Context,
 		nodeInfo.NumPeers, nodeInfo.Version, mailboxServer)), nil
 }
 
-// connectToLNC establishes the actual LNC connection.
+// ConnectToLNC establishes the actual LNC connection.
 func (s *ConnectionService) connectToLNC(ctx context.Context,
 	pairingPhrase, password, mailboxServer string, devMode,
 	insecure bool) (*grpc.ClientConn, *lnrpc.GetInfoResponse, error) {
-	zap.L().Debug("Starting LNC connection process",
+	
+	// Ensure we have a RequestContext
+	reqCtx := lnccontext.Ensure(ctx, "lnc_connect_internal")
+	logger := logging.LogWithContext(reqCtx)
+	
+	logger.Debug("Starting LNC connection process",
 		zap.String("mailbox", mailboxServer),
 		zap.Int("pairing_phrase_words", len(strings.Split(pairingPhrase, " "))),
 		zap.Bool("dev_mode", devMode),
@@ -182,9 +213,10 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 	// Generate a new private key for this session
 	privKey, err := btcec.NewPrivateKey()
 	if err != nil {
+		logger.Error("Failed to generate private key", zap.Error(err))
 		return nil, nil, fmt.Errorf("failed to generate private key: %w", err)
 	}
-	zap.L().Debug("Generated session private key")
+	logger.Debug("Generated session private key")
 
 	// Wrap the private key to implement keychain.SingleKeyECDH interface
 	localPriv := &keychain.PrivKeyECDH{PrivKey: privKey}
@@ -197,46 +229,58 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 	// Handle TLS configuration for dev servers - CRITICAL FOR LOCAL CONNECTIONS!
 	if devMode || insecure || strings.HasPrefix(mailboxServer, "localhost") ||
 		strings.HasPrefix(mailboxServer, "127.0.0.1") {
-		zap.L().Info("Configuring insecure connection",
+		logger.Info("Configuring insecure connection",
 			zap.String("reason", "dev mode or localhost"))
 		// This is what the old server did - set global HTTP transport TLS config
 		defaultTransport := http.DefaultTransport.(*http.Transport)
 		defaultTransport.TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
-		zap.L().Debug("TLS verification disabled for HTTP transport")
+		logger.Debug("TLS verification disabled for HTTP transport")
 	}
 
 	// Create a new mailbox connection
-	zap.L().Debug("Creating mailbox WebSocket connection")
+	logger.Debug("Creating mailbox WebSocket connection")
 	statusChecker, lndConnect, err := mailbox.NewClientWebsocketConn(
 		mailboxServer,
 		pairingPhrase,
 		localPriv,
 		remotePub,
 		func(key *btcec.PublicKey) error {
-			zap.L().Debug("Received remote public key",
+			logger.Debug("Received remote public key",
 				zap.String("key", fmt.Sprintf("%x", key.SerializeCompressed())))
 			remotePub = key
 			return nil
 		},
 		func(data []byte) error {
-			zap.L().Debug("Received auth data", zap.Int("bytes", len(data)))
+			logger.Debug("Received auth data", zap.Int("bytes", len(data)))
 			authReceived = true
 			return nil
 		},
 	)
 	if err != nil {
+		logger.Error("Failed to create mailbox connection", 
+			zap.Error(err),
+			zap.Duration("failed_after", reqCtx.Duration()))
 		return nil, nil, fmt.Errorf("failed to create mailbox connection: %w", err)
 	}
-	zap.L().Debug("Mailbox connection created successfully")
+	logger.Debug("Mailbox connection created successfully")
 
 	// Give some time for the connection callbacks to be triggered (critical!)
-	zap.L().Debug("Waiting for connection callbacks to process")
-	time.Sleep(3 * time.Second)
+	logger.Debug("Waiting for connection callbacks to process")
+	
+	// Check for context cancellation during wait
+	select {
+	case <-time.After(3 * time.Second):
+		// Continue
+	case <-reqCtx.Done():
+		logger.Error("Context cancelled during callback wait")
+		return nil, nil, fmt.Errorf("connection cancelled: %w", reqCtx.Err())
+	}
 
 	// NEW FIX: Don't wait for status, just check if lndConnect is available
 	if lndConnect == nil {
+		logger.Error("lndConnect function not available after connection setup")
 		return nil, nil, fmt.Errorf(
 			"lndConnect function not available after connection setup")
 	}
@@ -244,42 +288,58 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 	// Wait a bit more for callbacks, but proceed even without them
 	maxWaitTime := 5 * time.Second
 	waitStart := time.Now()
-	zap.L().Debug("Waiting for callbacks (but will proceed anyway)")
+	logger.Debug("Waiting for callbacks (but will proceed anyway)")
 
 	for time.Since(waitStart) < maxWaitTime {
+		// Check for context cancellation
+		select {
+		case <-reqCtx.Done():
+			logger.Error("Context cancelled during auth wait")
+			return nil, nil, fmt.Errorf("connection cancelled: %w", reqCtx.Err())
+		default:
+		}
+		
 		if authReceived && remotePub != nil {
-			zap.L().Debug("All callbacks received")
+			logger.Debug("All callbacks received")
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	zap.L().Debug("Final connection state",
+	logger.Debug("Final connection state",
 		zap.Bool("auth_received", authReceived),
 		zap.Bool("remote_pub_received", remotePub != nil),
+		zap.Duration("elapsed", reqCtx.Duration()),
 	)
 	status := statusChecker()
-	zap.L().Debug("Connection status", zap.String("status", status.String()))
+	logger.Debug("Connection status", zap.String("status", status.String()))
 
-	zap.L().Debug("Establishing gRPC connection to LND")
+	logger.Debug("Establishing gRPC connection to LND")
 	// Establish gRPC connection to LND
 	conn, err := lndConnect()
 	if err != nil {
+		logger.Error("Failed to establish LND connection", 
+			zap.Error(err),
+			zap.Duration("failed_after", reqCtx.Duration()))
 		return nil, nil, fmt.Errorf("failed to establish LND connection: %w", err)
 	}
-	zap.L().Debug("gRPC connection established successfully")
+	logger.Debug("gRPC connection established successfully")
 
 	// Create lightning client and test connection
-	zap.L().Debug("Testing connection with GetInfo")
+	logger.Debug("Testing connection with GetInfo")
 	lightningClient := lnrpc.NewLightningClient(conn)
-	info, err := lightningClient.GetInfo(ctx, &lnrpc.GetInfoRequest{})
+	info, err := lightningClient.GetInfo(reqCtx, &lnrpc.GetInfoRequest{})
 	if err != nil {
+		logger.Error("Failed to get node info", 
+			zap.Error(err),
+			zap.Duration("failed_after", reqCtx.Duration()))
 		conn.Close()
 		return nil, nil, fmt.Errorf("connected but failed to get node info: %w", err)
 	}
-	zap.L().Info("Successfully connected to Lightning node",
+	logger.Info("Successfully connected to Lightning node",
 		zap.String("alias", info.Alias),
 		zap.String("pubkey", info.IdentityPubkey),
+		zap.Duration("total_connection_time", reqCtx.Duration()),
 	)
 
 	return conn, info, nil
@@ -300,9 +360,22 @@ func (s *ConnectionService) DisconnectTool() mcp.Tool {
 // HandleDisconnect handles the LNC disconnect request.
 func (s *ConnectionService) HandleDisconnect(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Create request context
+	reqCtx := lnccontext.New(ctx, "lnc_disconnect", 10*time.Second)
+	logger := logging.LogWithContext(reqCtx)
+	
+	logger.Info("Disconnecting from Lightning node")
+	
 	if s.Connection != nil {
-		s.Connection.Close()
+		err := s.Connection.Close()
+		if err != nil {
+			logger.Error("Error closing connection", zap.Error(err))
+		} else {
+			logger.Info("Connection closed successfully")
+		}
 		s.Connection = nil
+	} else {
+		logger.Debug("No active connection to close")
 	}
 
 	return mcp.NewToolResultText(`{
@@ -311,7 +384,7 @@ func (s *ConnectionService) HandleDisconnect(ctx context.Context,
 	}`), nil
 }
 
-// getMailboxServer retrieves the mailbox server from tool arguments.
+// GetMailboxServer retrieves the mailbox server from tool arguments.
 func getMailboxServer(args map[string]any) string {
 	if mailbox, ok := args["mailbox"]; ok && mailbox != nil {
 		if mailboxStr, ok := mailbox.(string); ok {

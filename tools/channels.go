@@ -405,7 +405,7 @@ func (s *ChannelService) HandlePendingChannels(ctx context.Context,
 	return mcp.NewToolResultText(toJSONString(result)), nil
 }
 
-// formatPendingOpenChannels formats pending open channel data for JSON output.
+// FormatPendingOpenChannels formats pending open channel data for JSON output.
 func formatPendingOpenChannels(
 	channels []*lnrpc.PendingChannelsResponse_PendingOpenChannel) []map[string]any {
 	result := make([]map[string]any, len(channels))
@@ -420,7 +420,7 @@ func formatPendingOpenChannels(
 	return result
 }
 
-// formatPendingClosingChannels formats pending closing channel data for JSON output.
+// FormatPendingClosingChannels formats pending closing channel data for JSON output.
 func formatPendingClosingChannels(
 	channels []*lnrpc.PendingChannelsResponse_ClosedChannel) []map[string]any {
 	result := make([]map[string]any, len(channels))
@@ -433,7 +433,7 @@ func formatPendingClosingChannels(
 	return result
 }
 
-// formatPendingForceClosingChannels formats force closing channel data for JSON output.
+// FormatPendingForceClosingChannels formats force closing channel data for JSON output.
 func formatPendingForceClosingChannels(
 	channels []*lnrpc.PendingChannelsResponse_ForceClosedChannel) []map[string]any {
 	result := make([]map[string]any, len(channels))
@@ -450,7 +450,7 @@ func formatPendingForceClosingChannels(
 	return result
 }
 
-// formatWaitingCloseChannels formats waiting close channel data for JSON output.
+// FormatWaitingCloseChannels formats waiting close channel data for JSON output.
 func formatWaitingCloseChannels(
 	channels []*lnrpc.PendingChannelsResponse_WaitingCloseChannel) []map[string]any {
 	result := make([]map[string]any, len(channels))
@@ -463,7 +463,7 @@ func formatWaitingCloseChannels(
 	return result
 }
 
-// formatPendingChannel formats a single pending channel for JSON output.
+// FormatPendingChannel formats a single pending channel for JSON output.
 func formatPendingChannel(
 	ch *lnrpc.PendingChannelsResponse_PendingChannel) map[string]any {
 	return map[string]any{
@@ -475,7 +475,7 @@ func formatPendingChannel(
 	}
 }
 
-// toJSONString converts an interface to JSON string for output formatting.
+// ToJSONString converts an interface to JSON string for output formatting.
 func toJSONString(v any) string {
 	// This is a simplified version - in production you'd use proper
 	// JSON marshaling

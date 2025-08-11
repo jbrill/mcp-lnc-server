@@ -1,7 +1,7 @@
 // Package logging provides structured logging functionality for the MCP LNC server.
 //
-// This package uses zap for high-performance structured logging with support
-// for both development and production configurations.
+// This package uses zap for high-performance structured logging with support.
+// For both development and production configurations.
 package logging
 
 import (
@@ -15,7 +15,7 @@ import (
 // Logger is the global logger instance.
 var Logger *zap.Logger
 
-// zapLogger wraps zap.Logger to implement interfaces.Logger.
+// ZapLogger wraps zap.Logger to implement interfaces.Logger.
 type zapLogger struct {
 	logger *zap.Logger
 }

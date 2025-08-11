@@ -10,7 +10,7 @@ import (
 
 // Test LoadConfig with default values.
 func TestLoadConfig_Defaults(t *testing.T) {
-	// Clear environment variables to test defaults
+	// Clear environment variables to test defaults.
 	os.Unsetenv("DEVELOPMENT")
 	os.Unsetenv("LNC_DEFAULT_MAILBOX")
 	os.Unsetenv("LNC_DEFAULT_TIMEOUT")
@@ -19,7 +19,7 @@ func TestLoadConfig_Defaults(t *testing.T) {
 
 	assert.Equal(t, "lnc-mcp-server", config.ServerName)
 	assert.Equal(t, "1.0.0", config.ServerVersion)
-	assert.True(t, config.Development) // Default is true
+	assert.True(t, config.Development) // Default is true.
 	assert.Equal(t, "mailbox.terminal.lightning.today:443",
 		config.DefaultMailboxServer)
 	assert.Equal(t, 30*time.Second, config.DefaultTimeout)
@@ -28,7 +28,7 @@ func TestLoadConfig_Defaults(t *testing.T) {
 
 // Test LoadConfig with environment variables.
 func TestLoadConfig_EnvironmentVariables(t *testing.T) {
-	// Set environment variables
+	// Set environment variables.
 	os.Setenv("DEVELOPMENT", "false")
 	os.Setenv("LNC_DEFAULT_MAILBOX", "test.server:443")
 	os.Setenv("LNC_DEFAULT_TIMEOUT", "45s")
@@ -78,12 +78,12 @@ func TestLoadConfig_DevelopmentMode(t *testing.T) {
 		{
 			name:     "yes",
 			envValue: "yes",
-			expected: true, // Default fallback when parse fails
+			expected: true, // Default fallback when parse fails.
 		},
 		{
 			name:     "invalid",
 			envValue: "invalid",
-			expected: true, // Default fallback when parse fails
+			expected: true, // Default fallback when parse fails.
 		},
 	}
 
@@ -102,7 +102,7 @@ func TestLoadConfig_DevelopmentMode(t *testing.T) {
 func TestConfig_Validation(t *testing.T) {
 	config := LoadConfig()
 
-	// Test that all required fields are set
+	// Test that all required fields are set.
 	assert.NotEmpty(t, config.ServerName)
 	assert.NotEmpty(t, config.ServerVersion)
 	assert.NotEmpty(t, config.DefaultMailboxServer)
@@ -116,7 +116,7 @@ func TestConfig_Validation(t *testing.T) {
 func TestConfig_Structure(t *testing.T) {
 	config := LoadConfig()
 
-	// Verify all fields are accessible
+	// Verify all fields are accessible.
 	_ = config.ServerName
 	_ = config.ServerVersion
 	_ = config.Development
@@ -128,7 +128,7 @@ func TestConfig_Structure(t *testing.T) {
 	_ = config.ConnectionTimeout
 	_ = config.ShutdownTimeout
 
-	// Test that we can modify fields
+	// Test that we can modify fields.
 	config.ServerName = "modified"
 	assert.Equal(t, "modified", config.ServerName)
 }
@@ -243,7 +243,7 @@ func TestGetEnvBool(t *testing.T) {
 func TestConfig_TimeoutValues(t *testing.T) {
 	config := LoadConfig()
 
-	// Verify timeout values are reasonable
+	// Verify timeout values are reasonable.
 	assert.True(t, config.DefaultTimeout > 0)
 	assert.True(t, config.ShutdownTimeout > 0)
 	assert.True(t, config.ConnectionTimeout > 0)

@@ -1,8 +1,8 @@
-// Package testutils provides testing utilities and mock implementations for
-// the MCP LNC server.
+// Package testutils provides testing utilities and mock implementations for.
+// The MCP LNC server.
 //
-// This package includes mock clients, test helpers, and utilities for
-// comprehensive testing of Lightning Network functionality.
+// This package includes mock clients, test helpers, and utilities for.
+// Comprehensive testing of Lightning Network functionality.
 package testutils
 
 import (
@@ -18,8 +18,8 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-// MockLightningClient is a mock implementation of the LightningClient
-// interface for testing.
+// MockLightningClient is a mock implementation of the LightningClient.
+// Interface for testing.
 type MockLightningClient struct {
 	mock.Mock
 }
@@ -162,8 +162,8 @@ func (m *MockLightningClient) EstimateFee(ctx context.Context,
 	return args.Get(0).(*lnrpc.EstimateFeeResponse), args.Error(1)
 }
 
-// MockRouterClient is a mock implementation of the RouterClient interface
-// for testing.
+// MockRouterClient is a mock implementation of the RouterClient interface.
+// For testing.
 type MockRouterClient struct {
 	mock.Mock
 }
@@ -316,8 +316,8 @@ func AssertError(t *testing.T, err error) {
 	}
 }
 
-// AssertContains is a test helper that checks if a string contains a
-// substring.
+// AssertContains is a test helper that checks if a string contains a.
+// Substring.
 func AssertContains(t *testing.T, str, substr string) {
 	t.Helper()
 	if len(str) == 0 {

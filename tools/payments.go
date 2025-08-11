@@ -276,7 +276,7 @@ func (s *PaymentService) HandleSendPayment(ctx context.Context,
 	}
 }
 
-// getFailureDetails extracts useful failure information from a payment update.
+// GetFailureDetails extracts useful failure information from a payment update.
 func getFailureDetails(update *lnrpc.Payment) string {
 	if len(update.Htlcs) == 0 {
 		return "No HTLC details available"

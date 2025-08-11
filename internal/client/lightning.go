@@ -1,8 +1,8 @@
-// Package client provides Lightning Network client wrappers that implement
-// our defined interfaces.
+// Package client provides Lightning Network client wrappers that implement.
+// Our defined interfaces.
 //
-// This allows us to follow the "accept interfaces, return structs"
-// principle while maintaining compatibility with the LND gRPC clients.
+// This allows us to follow the "accept interfaces, return structs".
+// Principle while maintaining compatibility with the LND gRPC clients.
 package client
 
 import (
@@ -12,8 +12,8 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 )
 
-// lightningClientWrapper wraps the LND Lightning client to implement
-// our LightningClient interface.
+// LightningClientWrapper wraps the LND Lightning client to implement.
+// Our LightningClient interface.
 type lightningClientWrapper struct {
 	client lnrpc.LightningClient
 }
