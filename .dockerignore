@@ -1,0 +1,35 @@
+# Build artifacts
+mcp-lnc-server
+coverage.out
+coverage.html
+
+# Development files
+.git
+.github
+.gitignore
+.golangci.yml
+.vscode
+.idea
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+**/*_test.go
+**/testdata/
+
+
+# CI/CD files
+Makefile
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
+# IDE files
+*.swp
+*.swo
+*~

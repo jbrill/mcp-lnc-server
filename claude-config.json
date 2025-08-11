@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "lnc-mcp-server": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "host",
+        "--env",
+        "LNC_MAILBOX_SERVER",
+        "--env",
+        "LNC_DEV_MODE",
+        "--env",
+        "LNC_INSECURE",
+        "mcp-lnc-server"
+      ]
+    }
+  }
+}

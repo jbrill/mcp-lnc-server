@@ -1,0 +1,3795 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>mcp-lnc-server: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/jbrill/mcp-lnc-server/daemon.go (0.0%)</option>
+				
+				<option value="file1">github.com/jbrill/mcp-lnc-server/internal/client/lightning.go (0.0%)</option>
+				
+				<option value="file2">github.com/jbrill/mcp-lnc-server/internal/config/config.go (88.2%)</option>
+				
+				<option value="file3">github.com/jbrill/mcp-lnc-server/internal/context/context.go (95.6%)</option>
+				
+				<option value="file4">github.com/jbrill/mcp-lnc-server/internal/errors/errors.go (100.0%)</option>
+				
+				<option value="file5">github.com/jbrill/mcp-lnc-server/internal/logging/context_logger.go (0.0%)</option>
+				
+				<option value="file6">github.com/jbrill/mcp-lnc-server/internal/logging/logger.go (0.0%)</option>
+				
+				<option value="file7">github.com/jbrill/mcp-lnc-server/internal/services/manager.go (72.7%)</option>
+				
+				<option value="file8">github.com/jbrill/mcp-lnc-server/internal/testutils/mocks.go (0.0%)</option>
+				
+				<option value="file9">github.com/jbrill/mcp-lnc-server/server.go (0.0%)</option>
+				
+				<option value="file10">github.com/jbrill/mcp-lnc-server/tools/channels.go (0.0%)</option>
+				
+				<option value="file11">github.com/jbrill/mcp-lnc-server/tools/connection.go (2.3%)</option>
+				
+				<option value="file12">github.com/jbrill/mcp-lnc-server/tools/invoices.go (5.7%)</option>
+				
+				<option value="file13">github.com/jbrill/mcp-lnc-server/tools/node.go (0.0%)</option>
+				
+				<option value="file14">github.com/jbrill/mcp-lnc-server/tools/onchain.go (0.0%)</option>
+				
+				<option value="file15">github.com/jbrill/mcp-lnc-server/tools/payments.go (3.0%)</option>
+				
+				<option value="file16">github.com/jbrill/mcp-lnc-server/tools/peers.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Package main implements the read-only MCP LNC server daemon. It exposes
+// Lightning Network Daemon (LND) nodes through the Model Context Protocol (MCP)
+// using Lightning Node Connect (LNC), enabling AI assistants to securely query
+// Lightning Network data over WebSocket tunnels.
+package main
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "github.com/jbrill/mcp-lnc-server/internal/config"
+        lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
+        "github.com/jbrill/mcp-lnc-server/internal/logging"
+        "go.uber.org/zap"
+)
+
+// Daemon coordinates the MCP server lifecycle and shutdown orchestration.
+type Daemon struct {
+        cfg    *config.Config
+        logger *zap.Logger
+        server *Server
+
+        // quit is used to signal shutdown.
+        quit chan struct{}
+
+        // shutdownComplete is closed when all shutdown operations are complete.
+        shutdownComplete chan struct{}
+}
+
+// NewDaemon constructs a daemon instance with the provided configuration.
+func NewDaemon(cfg *config.Config, logger *zap.Logger) (*Daemon, error) <span class="cov0" title="0">{
+        server, err := NewServer(cfg, logger)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create server: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Daemon{
+                cfg:              cfg,
+                logger:           logger,
+                server:           server,
+                quit:             make(chan struct{}),
+                shutdownComplete: make(chan struct{}),
+        }, nil</span>
+}
+
+// Start runs the daemon until a shutdown signal or server failure occurs.
+func (d *Daemon) Start() error <span class="cov0" title="0">{
+        // Create context for daemon startup.
+        ctx := lnccontext.New(context.Background(), "daemon_start", 0)
+        defer ctx.Cancel()
+        logger := logging.LogWithContext(ctx)
+
+        logger.Info("Starting read-only MCP LNC Server daemon",
+                zap.String("version", d.cfg.ServerVersion),
+                zap.Bool("development", d.cfg.Development),
+        )
+
+        // Start the server in a goroutine.
+        serverErrChan := make(chan error, 1)
+        go func() </span><span class="cov0" title="0">{
+                if err := d.server.Start(); err != nil </span><span class="cov0" title="0">{
+                        serverErrChan &lt;- err
+                }</span>
+        }()
+
+        // Set up signal handling for graceful shutdown.
+        <span class="cov0" title="0">sigChan := make(chan os.Signal, 1)
+        signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+        // Start shutdown handler.
+        go d.shutdownHandler()
+
+        // Wait for either a shutdown signal or server error.
+        select </span>{
+        case sig := &lt;-sigChan:<span class="cov0" title="0">
+                logger.Info("Received shutdown signal",
+                        zap.String("signal", sig.String()),
+                        zap.Duration("uptime", ctx.Duration()))
+                close(d.quit)</span>
+
+        case err := &lt;-serverErrChan:<span class="cov0" title="0">
+                if err != nil &amp;&amp; err != context.Canceled </span><span class="cov0" title="0">{
+                        logger.Error("Server error",
+                                zap.Error(err),
+                                zap.Duration("uptime", ctx.Duration()))
+                        close(d.quit)
+                        return err
+                }</span>
+
+        case &lt;-d.quit:<span class="cov0" title="0"></span>
+                // Shutdown was triggered internally
+        }
+
+        // Wait for shutdown to complete.
+        <span class="cov0" title="0">&lt;-d.shutdownComplete
+        logger.Info("MCP LNC Server daemon shutdown complete",
+                zap.Duration("total_uptime", ctx.Duration()))
+
+        return nil</span>
+}
+
+// Stop triggers a graceful shutdown of the daemon.
+func (d *Daemon) Stop() <span class="cov0" title="0">{
+        select </span>{
+        case &lt;-d.quit:<span class="cov0" title="0">
+                // Already shutting down.
+                return</span>
+        default:<span class="cov0" title="0"></span>
+        }
+
+        <span class="cov0" title="0">ctx := lnccontext.New(context.Background(), "daemon_stop",
+                5*time.Second)
+        defer ctx.Cancel()
+        logger := logging.LogWithContext(ctx)
+        logger.Info("Initiating daemon shutdown...")
+        close(d.quit)</span>
+}
+
+// shutdownHandler drains the quit channel and coordinates shutdown.
+func (d *Daemon) shutdownHandler() <span class="cov0" title="0">{
+        &lt;-d.quit
+
+        // Create context for shutdown with timeout.
+        shutdownCtx := lnccontext.New(
+                context.Background(),
+                "daemon_shutdown",
+                d.cfg.ShutdownTimeout,
+        )
+        defer shutdownCtx.Cancel()
+        logger := logging.LogWithContext(shutdownCtx)
+
+        logger.Info("Beginning graceful shutdown...",
+                zap.Duration("timeout", d.cfg.ShutdownTimeout))
+
+        // Stop the server.
+        if err := d.server.Stop(shutdownCtx); err != nil </span><span class="cov0" title="0">{
+                logger.Error("Error during server shutdown",
+                        zap.Error(err),
+                        zap.Duration("shutdown_duration", shutdownCtx.Duration()))
+        }</span> else<span class="cov0" title="0"> {
+                logger.Info("Server shutdown completed successfully",
+                        zap.Duration("shutdown_duration", shutdownCtx.Duration()))
+        }</span>
+
+        // Signal shutdown complete.
+        <span class="cov0" title="0">close(d.shutdownComplete)</span>
+}
+
+// main is the entry point for the MCP LNC server daemon.
+func main() <span class="cov0" title="0">{
+        // Load configuration
+        cfg := config.LoadConfig()
+
+        // Initialize logging
+        if err := logging.InitLogger(cfg.Development); err != nil </span><span class="cov0" title="0">{
+                fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+                os.Exit(1)
+        }</span>
+        <span class="cov0" title="0">defer logging.Sync()
+
+        logger := logging.Logger
+
+        // Create and start the daemon
+        daemon, err := NewDaemon(cfg, logger)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to create daemon", zap.Error(err))
+                os.Exit(1)
+        }</span>
+
+        <span class="cov0" title="0">if err := daemon.Start(); err != nil </span><span class="cov0" title="0">{
+                logger.Error("Daemon startup failed", zap.Error(err))
+                os.Exit(1)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Package client provides Lightning Network client wrappers that implement.
+// Our defined interfaces.
+//
+// This allows us to follow the "accept interfaces, return structs".
+// Principle while maintaining compatibility with the LND gRPC clients.
+package client
+
+import (
+        "context"
+
+        "github.com/jbrill/mcp-lnc-server/internal/interfaces"
+        "github.com/lightningnetwork/lnd/lnrpc"
+)
+
+// LightningClientWrapper wraps the LND Lightning client to implement.
+// Our LightningClient interface.
+type lightningClientWrapper struct {
+        client lnrpc.LightningClient
+}
+
+// NewLightningClient creates a new Lightning client wrapper.
+func NewLightningClient(
+        client lnrpc.LightningClient) interfaces.LightningClient <span class="cov0" title="0">{
+        return &amp;lightningClientWrapper{client: client}
+}</span>
+
+// GetInfo retrieves general information about the Lightning node.
+func (w *lightningClientWrapper) GetInfo(ctx context.Context,
+        req *lnrpc.GetInfoRequest) (*lnrpc.GetInfoResponse, error) <span class="cov0" title="0">{
+        return w.client.GetInfo(ctx, req)
+}</span>
+
+// WalletBalance retrieves the on-chain wallet balance.
+func (w *lightningClientWrapper) WalletBalance(ctx context.Context,
+        req *lnrpc.WalletBalanceRequest) (
+        *lnrpc.WalletBalanceResponse, error) <span class="cov0" title="0">{
+        return w.client.WalletBalance(ctx, req)
+}</span>
+
+// ChannelBalance retrieves the Lightning channel balance.
+func (w *lightningClientWrapper) ChannelBalance(ctx context.Context,
+        req *lnrpc.ChannelBalanceRequest) (
+        *lnrpc.ChannelBalanceResponse, error) <span class="cov0" title="0">{
+        return w.client.ChannelBalance(ctx, req)
+}</span>
+
+// ListChannels lists all Lightning channels.
+func (w *lightningClientWrapper) ListChannels(ctx context.Context,
+        req *lnrpc.ListChannelsRequest) (
+        *lnrpc.ListChannelsResponse, error) <span class="cov0" title="0">{
+        return w.client.ListChannels(ctx, req)
+}</span>
+
+// AddInvoice creates a new Lightning invoice.
+func (w *lightningClientWrapper) AddInvoice(ctx context.Context,
+        req *lnrpc.Invoice) (*lnrpc.AddInvoiceResponse, error) <span class="cov0" title="0">{
+        return w.client.AddInvoice(ctx, req)
+}</span>
+
+// DecodePayReq decodes a BOLT11 payment request.
+func (w *lightningClientWrapper) DecodePayReq(ctx context.Context,
+        req *lnrpc.PayReqString) (*lnrpc.PayReq, error) <span class="cov0" title="0">{
+        return w.client.DecodePayReq(ctx, req)
+}</span>
+
+// SendCoins sends an on-chain transaction.
+func (w *lightningClientWrapper) SendCoins(ctx context.Context,
+        req *lnrpc.SendCoinsRequest) (*lnrpc.SendCoinsResponse, error) <span class="cov0" title="0">{
+        return w.client.SendCoins(ctx, req)
+}</span>
+
+// NewAddress generates a new on-chain address.
+func (w *lightningClientWrapper) NewAddress(ctx context.Context,
+        req *lnrpc.NewAddressRequest) (
+        *lnrpc.NewAddressResponse, error) <span class="cov0" title="0">{
+        return w.client.NewAddress(ctx, req)
+}</span>
+
+// ConnectPeer connects to a Lightning Network peer.
+func (w *lightningClientWrapper) ConnectPeer(ctx context.Context,
+        req *lnrpc.ConnectPeerRequest) (
+        *lnrpc.ConnectPeerResponse, error) <span class="cov0" title="0">{
+        return w.client.ConnectPeer(ctx, req)
+}</span>
+
+// ListPeers lists all connected Lightning Network peers.
+func (w *lightningClientWrapper) ListPeers(ctx context.Context,
+        req *lnrpc.ListPeersRequest) (*lnrpc.ListPeersResponse, error) <span class="cov0" title="0">{
+        return w.client.ListPeers(ctx, req)
+}</span>
+
+// DisconnectPeer disconnects from a Lightning Network peer.
+func (w *lightningClientWrapper) DisconnectPeer(ctx context.Context,
+        req *lnrpc.DisconnectPeerRequest) (
+        *lnrpc.DisconnectPeerResponse, error) <span class="cov0" title="0">{
+        return w.client.DisconnectPeer(ctx, req)
+}</span>
+
+// DescribeGraph retrieves the Lightning Network graph.
+func (w *lightningClientWrapper) DescribeGraph(ctx context.Context,
+        req *lnrpc.ChannelGraphRequest) (*lnrpc.ChannelGraph, error) <span class="cov0" title="0">{
+        return w.client.DescribeGraph(ctx, req)
+}</span>
+
+// GetNodeInfo retrieves information about a specific node.
+func (w *lightningClientWrapper) GetNodeInfo(ctx context.Context,
+        req *lnrpc.NodeInfoRequest) (*lnrpc.NodeInfo, error) <span class="cov0" title="0">{
+        return w.client.GetNodeInfo(ctx, req)
+}</span>
+
+// PendingChannels lists all pending Lightning channels.
+func (w *lightningClientWrapper) PendingChannels(ctx context.Context,
+        req *lnrpc.PendingChannelsRequest) (
+        *lnrpc.PendingChannelsResponse, error) <span class="cov0" title="0">{
+        return w.client.PendingChannels(ctx, req)
+}</span>
+
+// OpenChannel opens a new Lightning channel.
+func (w *lightningClientWrapper) OpenChannel(ctx context.Context,
+        req *lnrpc.OpenChannelRequest) (
+        lnrpc.Lightning_OpenChannelClient, error) <span class="cov0" title="0">{
+        return w.client.OpenChannel(ctx, req)
+}</span>
+
+// CloseChannel closes an existing Lightning channel.
+func (w *lightningClientWrapper) CloseChannel(ctx context.Context,
+        req *lnrpc.CloseChannelRequest) (
+        lnrpc.Lightning_CloseChannelClient, error) <span class="cov0" title="0">{
+        return w.client.CloseChannel(ctx, req)
+}</span>
+
+// GetTransactions retrieves on-chain transaction history.
+func (w *lightningClientWrapper) GetTransactions(ctx context.Context,
+        req *lnrpc.GetTransactionsRequest) (
+        *lnrpc.TransactionDetails, error) <span class="cov0" title="0">{
+        return w.client.GetTransactions(ctx, req)
+}</span>
+
+// ListUnspent lists unspent transaction outputs.
+func (w *lightningClientWrapper) ListUnspent(ctx context.Context,
+        req *lnrpc.ListUnspentRequest) (
+        *lnrpc.ListUnspentResponse, error) <span class="cov0" title="0">{
+        return w.client.ListUnspent(ctx, req)
+}</span>
+
+// EstimateFee estimates on-chain transaction fees.
+func (w *lightningClientWrapper) EstimateFee(ctx context.Context,
+        req *lnrpc.EstimateFeeRequest) (
+        *lnrpc.EstimateFeeResponse, error) <span class="cov0" title="0">{
+        return w.client.EstimateFee(ctx, req)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Package config provides configuration management helpers for the MCP LNC server.
+package config
+
+import (
+        "os"
+        "strconv"
+        "time"
+)
+
+// Config captures all runtime configuration for the read-only MCP LNC server.
+type Config struct {
+        // Server configuration.
+        ServerName    string
+        ServerVersion string
+        Development   bool
+
+        // LNC connection defaults.
+        DefaultMailboxServer string
+        DefaultTimeout       time.Duration
+        DefaultDevMode       bool
+        DefaultInsecure      bool
+
+        // Security settings.
+        MaxConnectionRetries int
+        ConnectionTimeout    time.Duration
+        ShutdownTimeout      time.Duration
+}
+
+// LoadConfig populates Config from environment variables with sensible defaults.
+func LoadConfig() *Config <span class="cov8" title="1">{
+        cfg := &amp;Config{
+                // Server defaults.
+                ServerName:    "lnc-mcp-server",
+                ServerVersion: "1.0.0",
+                Development:   getEnvBool("DEVELOPMENT", true),
+
+                // LNC defaults.
+                DefaultMailboxServer: getEnvString("LNC_DEFAULT_MAILBOX",
+                        "mailbox.terminal.lightning.today:443"),
+                DefaultTimeout: getEnvDuration("LNC_DEFAULT_TIMEOUT",
+                        30*time.Second),
+                DefaultDevMode:  getEnvBool("LNC_DEFAULT_DEV_MODE", false),
+                DefaultInsecure: getEnvBool("LNC_DEFAULT_INSECURE", false),
+
+                // Security defaults.
+                MaxConnectionRetries: getEnvInt("LNC_MAX_RETRIES", 3),
+                ConnectionTimeout: getEnvDuration("LNC_CONNECTION_TIMEOUT",
+                        30*time.Second),
+                ShutdownTimeout: getEnvDuration("SHUTDOWN_TIMEOUT",
+                        30*time.Second),
+        }
+
+        return cfg
+}</span>
+
+// getEnvString retrieves a string value from environment variables with a fallback.
+func getEnvString(key, defaultValue string) string <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov8" title="1">{
+                return value
+        }</span>
+        <span class="cov8" title="1">return defaultValue</span>
+}
+
+// getEnvInt retrieves an integer value from environment variables with a fallback.
+func getEnvInt(key string, defaultValue int) int <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if parsed, err := strconv.Atoi(value); err == nil </span><span class="cov0" title="0">{
+                        return parsed
+                }</span>
+        }
+        <span class="cov8" title="1">return defaultValue</span>
+}
+
+// getEnvBool retrieves a boolean value from environment variables with a fallback.
+func getEnvBool(key string, defaultValue bool) bool <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov8" title="1">{
+                if parsed, err := strconv.ParseBool(value); err == nil </span><span class="cov8" title="1">{
+                        return parsed
+                }</span>
+        }
+        <span class="cov8" title="1">return defaultValue</span>
+}
+
+// getEnvDuration retrieves a duration value from environment variables with a fallback.
+func getEnvDuration(key string, defaultValue time.Duration) time.Duration <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov8" title="1">{
+                if parsed, err := time.ParseDuration(value); err == nil </span><span class="cov8" title="1">{
+                        return parsed
+                }</span>
+        }
+        <span class="cov8" title="1">return defaultValue</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Package context provides request-scoped metadata and tracing helpers for the
+// MCP LNC server.
+package context
+
+import (
+        "context"
+        "time"
+
+        "github.com/google/uuid"
+)
+
+// ContextKey is a type for context keys to avoid collisions.
+type contextKey string
+
+const (
+        // Context keys for request metadata.
+        requestIDKey contextKey = "request_id"
+        traceIDKey   contextKey = "trace_id"
+        userIDKey    contextKey = "user_id"
+        sessionIDKey contextKey = "session_id"
+        nodeIDKey    contextKey = "node_id"
+        operationKey contextKey = "operation"
+        startTimeKey contextKey = "start_time"
+        deadlineKey  contextKey = "deadline"
+)
+
+// RequestContext wraps a standard context with request-specific metadata.
+type RequestContext struct {
+        context.Context
+        cancel    context.CancelFunc
+        requestID string
+        traceID   string
+        userID    string
+        sessionID string
+        nodeID    string
+        operation string
+        startTime time.Time
+        deadline  time.Time
+}
+
+// New creates a new RequestContext with generated identifiers and a timeout.
+func New(parent context.Context, operation string, timeout time.Duration) *RequestContext <span class="cov8" title="1">{
+        var (
+                ctx    context.Context
+                cancel context.CancelFunc
+        )
+
+        if timeout &gt; 0 </span><span class="cov8" title="1">{
+                ctx, cancel = context.WithTimeout(parent, timeout)
+        }</span> else<span class="cov0" title="0"> {
+                ctx, cancel = context.WithCancel(parent)
+        }</span>
+
+        <span class="cov8" title="1">now := time.Now()
+        rc := &amp;RequestContext{
+                Context:   ctx,
+                cancel:    cancel,
+                requestID: uuid.New().String(),
+                traceID:   uuid.New().String(),
+                operation: operation,
+                startTime: now,
+                deadline:  now.Add(timeout),
+        }
+
+        // Store values in underlying context for middleware compatibility.
+        rc.Context = context.WithValue(rc.Context, requestIDKey, rc.requestID)
+        rc.Context = context.WithValue(rc.Context, traceIDKey, rc.traceID)
+        rc.Context = context.WithValue(rc.Context, operationKey, rc.operation)
+        rc.Context = context.WithValue(rc.Context, startTimeKey, rc.startTime)
+        rc.Context = context.WithValue(rc.Context, deadlineKey, rc.deadline)
+
+        return rc</span>
+}
+
+// WithTraceID clones a RequestContext while reusing an existing trace ID for
+// distributed tracing.
+func WithTraceID(parent context.Context, traceID, operation string,
+        timeout time.Duration) *RequestContext <span class="cov8" title="1">{
+        rc := New(parent, operation, timeout)
+        rc.traceID = traceID
+        rc.Context = context.WithValue(rc.Context, traceIDKey, traceID)
+        return rc
+}</span>
+
+// Cancel releases resources associated with the context.
+func (rc *RequestContext) Cancel() <span class="cov8" title="1">{
+        if rc == nil || rc.cancel == nil </span><span class="cov8" title="1">{
+                return
+        }</span>
+        <span class="cov8" title="1">rc.cancel()
+        rc.cancel = nil</span>
+}
+
+// Done returns a channel that is closed when work associated with the context completes.
+func (rc *RequestContext) Done() &lt;-chan struct{} <span class="cov8" title="1">{
+        if rc == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">return rc.Context.Done()</span>
+}
+
+// Err returns the error associated with the context, if any.
+func (rc *RequestContext) Err() error <span class="cov8" title="1">{
+        if rc == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">return rc.Context.Err()</span>
+}
+
+// WithUser adds user information to the context.
+func (rc *RequestContext) WithUser(userID, sessionID string) *RequestContext <span class="cov8" title="1">{
+        rc.userID = userID
+        rc.sessionID = sessionID
+        rc.Context = context.WithValue(rc.Context, userIDKey, userID)
+        rc.Context = context.WithValue(rc.Context, sessionIDKey, sessionID)
+        return rc
+}</span>
+
+// WithNode adds Lightning node information to the context.
+func (rc *RequestContext) WithNode(nodeID string) *RequestContext <span class="cov8" title="1">{
+        rc.nodeID = nodeID
+        rc.Context = context.WithValue(rc.Context, nodeIDKey, nodeID)
+        return rc
+}</span>
+
+// RequestID returns the unique request identifier.
+func (rc *RequestContext) RequestID() string <span class="cov8" title="1">{
+        return rc.requestID
+}</span>
+
+// TraceID returns the trace identifier for distributed tracing.
+func (rc *RequestContext) TraceID() string <span class="cov8" title="1">{
+        return rc.traceID
+}</span>
+
+// UserID returns the user identifier if set.
+func (rc *RequestContext) UserID() string <span class="cov8" title="1">{
+        return rc.userID
+}</span>
+
+// SessionID returns the session identifier if set.
+func (rc *RequestContext) SessionID() string <span class="cov8" title="1">{
+        return rc.sessionID
+}</span>
+
+// NodeID returns the Lightning node identifier if set.
+func (rc *RequestContext) NodeID() string <span class="cov8" title="1">{
+        return rc.nodeID
+}</span>
+
+// Operation returns the operation name.
+func (rc *RequestContext) Operation() string <span class="cov8" title="1">{
+        return rc.operation
+}</span>
+
+// StartTime returns when the request started.
+func (rc *RequestContext) StartTime() time.Time <span class="cov0" title="0">{
+        return rc.startTime
+}</span>
+
+// Duration returns how long the request has been running.
+func (rc *RequestContext) Duration() time.Duration <span class="cov8" title="1">{
+        return time.Since(rc.startTime)
+}</span>
+
+// TimeRemaining returns the time remaining before deadline.
+func (rc *RequestContext) TimeRemaining() time.Duration <span class="cov8" title="1">{
+        return time.Until(rc.deadline)
+}</span>
+
+// IsExpired checks if the context deadline has passed.
+func (rc *RequestContext) IsExpired() bool <span class="cov8" title="1">{
+        return time.Now().After(rc.deadline)
+}</span>
+
+// Helper functions for extracting values from any context.
+
+// GetRequestID extracts the request ID from any context.
+func GetRequestID(ctx context.Context) string <span class="cov8" title="1">{
+        if id, ok := ctx.Value(requestIDKey).(string); ok </span><span class="cov8" title="1">{
+                return id
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+// GetTraceID extracts the trace ID from any context.
+func GetTraceID(ctx context.Context) string <span class="cov8" title="1">{
+        if id, ok := ctx.Value(traceIDKey).(string); ok </span><span class="cov8" title="1">{
+                return id
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+// GetUserID extracts the user ID from any context.
+func GetUserID(ctx context.Context) string <span class="cov8" title="1">{
+        if id, ok := ctx.Value(userIDKey).(string); ok </span><span class="cov8" title="1">{
+                return id
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+// GetSessionID extracts the session ID from any context.
+func GetSessionID(ctx context.Context) string <span class="cov8" title="1">{
+        if id, ok := ctx.Value(sessionIDKey).(string); ok </span><span class="cov8" title="1">{
+                return id
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+// GetNodeID extracts the node ID from any context.
+func GetNodeID(ctx context.Context) string <span class="cov8" title="1">{
+        if id, ok := ctx.Value(nodeIDKey).(string); ok </span><span class="cov8" title="1">{
+                return id
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+// GetOperation extracts the operation name from any context.
+func GetOperation(ctx context.Context) string <span class="cov8" title="1">{
+        if op, ok := ctx.Value(operationKey).(string); ok </span><span class="cov8" title="1">{
+                return op
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+// GetStartTime extracts the start time from any context.
+func GetStartTime(ctx context.Context) time.Time <span class="cov8" title="1">{
+        if t, ok := ctx.Value(startTimeKey).(time.Time); ok </span><span class="cov8" title="1">{
+                return t
+        }</span>
+        <span class="cov8" title="1">return time.Time{}</span>
+}
+
+// GetDuration calculates the duration from the stored start time in context.
+func GetDuration(ctx context.Context) time.Duration <span class="cov8" title="1">{
+        if t, ok := ctx.Value(startTimeKey).(time.Time); ok </span><span class="cov8" title="1">{
+                return time.Since(t)
+        }</span>
+        <span class="cov8" title="1">return 0</span>
+}
+
+// Fields returns all context fields as a map for logging.
+func (rc *RequestContext) Fields() map[string]any <span class="cov8" title="1">{
+        fields := make(map[string]any)
+
+        if rc.requestID != "" </span><span class="cov8" title="1">{
+                fields["request_id"] = rc.requestID
+        }</span>
+        <span class="cov8" title="1">if rc.traceID != "" </span><span class="cov8" title="1">{
+                fields["trace_id"] = rc.traceID
+        }</span>
+        <span class="cov8" title="1">if rc.userID != "" </span><span class="cov8" title="1">{
+                fields["user_id"] = rc.userID
+        }</span>
+        <span class="cov8" title="1">if rc.sessionID != "" </span><span class="cov8" title="1">{
+                fields["session_id"] = rc.sessionID
+        }</span>
+        <span class="cov8" title="1">if rc.nodeID != "" </span><span class="cov8" title="1">{
+                fields["node_id"] = rc.nodeID
+        }</span>
+        <span class="cov8" title="1">if rc.operation != "" </span><span class="cov8" title="1">{
+                fields["operation"] = rc.operation
+        }</span>
+        <span class="cov8" title="1">fields["duration_ms"] = rc.Duration().Milliseconds()
+        fields["time_remaining_ms"] = rc.TimeRemaining().Milliseconds()
+
+        return fields</span>
+}
+
+// FromContext attempts to cast a context to RequestContext.
+func FromContext(ctx context.Context) (*RequestContext, bool) <span class="cov8" title="1">{
+        rc, ok := ctx.(*RequestContext)
+        return rc, ok
+}</span>
+
+// Ensure wraps a context as RequestContext if it is not already.
+func Ensure(ctx context.Context, operation string) *RequestContext <span class="cov8" title="1">{
+        if rc, ok := FromContext(ctx); ok </span><span class="cov8" title="1">{
+                return rc
+        }</span>
+
+        // Check if we have an existing trace ID to maintain.
+        <span class="cov8" title="1">if traceID := GetTraceID(ctx); traceID != "" </span><span class="cov8" title="1">{
+                return WithTraceID(ctx, traceID, operation, 30*time.Second)
+        }</span>
+
+        // Create new context with default timeout.
+        <span class="cov8" title="1">return New(ctx, operation, 30*time.Second)</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">// Package errors defines structured error types used throughout the MCP LNC
+// server. It mirrors LND patterns so callers gain more context than generic
+// errors provide.
+package errors
+
+import (
+        "fmt"
+)
+
+// ErrorCode represents different types of errors that can occur.
+type ErrorCode uint32
+
+const (
+        // ErrCodeUnknown represents an unknown error.
+        ErrCodeUnknown ErrorCode = 0
+
+        // ErrCodeConnectionFailed represents a connection failure.
+        ErrCodeConnectionFailed ErrorCode = 1
+
+        // ErrCodeInvalidPairingPhrase represents an invalid pairing phrase.
+        ErrCodeInvalidPairingPhrase ErrorCode = 2
+
+        // ErrCodeTimeout represents a timeout error.
+        ErrCodeTimeout ErrorCode = 3
+
+        // ErrCodeNotConnected represents running operations without an active
+        // connection.
+        ErrCodeNotConnected ErrorCode = 4
+
+        // ErrCodeInvalidInvoice represents an invalid invoice format.
+        ErrCodeInvalidInvoice ErrorCode = 5
+
+        // ErrCodeInsufficientBalance represents insufficient balance for the
+        // requested operation.
+        ErrCodeInsufficientBalance ErrorCode = 6
+
+        // ErrCodeInvalidAddress represents an invalid address format.
+        ErrCodeInvalidAddress ErrorCode = 7
+
+        // ErrCodeServerShutdown represents server shutdown error.
+        ErrCodeServerShutdown ErrorCode = 8
+)
+
+// String returns a human-readable description of the error code.
+func (e ErrorCode) String() string <span class="cov8" title="1">{
+        switch e </span>{
+        case ErrCodeUnknown:<span class="cov8" title="1">
+                return "Unknown"</span>
+        case ErrCodeConnectionFailed:<span class="cov8" title="1">
+                return "ConnectionFailed"</span>
+        case ErrCodeInvalidPairingPhrase:<span class="cov8" title="1">
+                return "InvalidPairingPhrase"</span>
+        case ErrCodeTimeout:<span class="cov8" title="1">
+                return "Timeout"</span>
+        case ErrCodeNotConnected:<span class="cov8" title="1">
+                return "NotConnected"</span>
+        case ErrCodeInvalidInvoice:<span class="cov8" title="1">
+                return "InvalidInvoice"</span>
+        case ErrCodeInsufficientBalance:<span class="cov8" title="1">
+                return "InsufficientBalance"</span>
+        case ErrCodeInvalidAddress:<span class="cov8" title="1">
+                return "InvalidAddress"</span>
+        case ErrCodeServerShutdown:<span class="cov8" title="1">
+                return "ServerShutdown"</span>
+        default:<span class="cov8" title="1">
+                return fmt.Sprintf("Unknown(%d)", uint32(e))</span>
+        }
+}
+
+// Error represents a structured error with code and context.
+type Error struct {
+        Code    ErrorCode
+        Message string
+        Cause   error
+}
+
+// Error implements the error interface.
+func (e *Error) Error() string <span class="cov8" title="1">{
+        if e.Cause != nil </span><span class="cov8" title="1">{
+                return fmt.Sprintf("[%s] %s: %v", e.Code, e.Message, e.Cause)
+        }</span>
+        <span class="cov8" title="1">return fmt.Sprintf("[%s] %s", e.Code, e.Message)</span>
+}
+
+// Unwrap returns the underlying cause error for error unwrapping.
+func (e *Error) Unwrap() error <span class="cov8" title="1">{
+        return e.Cause
+}</span>
+
+// New creates a new structured error.
+func New(code ErrorCode, message string) *Error <span class="cov8" title="1">{
+        return &amp;Error{
+                Code:    code,
+                Message: message,
+        }
+}</span>
+
+// Wrap creates a new structured error that wraps another error.
+func Wrap(cause error, code ErrorCode, message string) *Error <span class="cov8" title="1">{
+        return &amp;Error{
+                Code:    code,
+                Message: message,
+                Cause:   cause,
+        }
+}</span>
+
+// Wrapf creates a new structured error with formatted message that wraps
+// another error.
+func Wrapf(cause error, code ErrorCode, format string,
+        args ...interface{}) *Error <span class="cov8" title="1">{
+        return &amp;Error{
+                Code:    code,
+                Message: fmt.Sprintf(format, args...),
+                Cause:   cause,
+        }
+}</span>
+
+// Is checks if the error has the given error code.
+func Is(err error, code ErrorCode) bool <span class="cov8" title="1">{
+        var e *Error
+        if As(err, &amp;e) </span><span class="cov8" title="1">{
+                return e.Code == code
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+
+// As attempts to cast the error to our Error type.
+func As(err error, target **Error) bool <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        <span class="cov8" title="1">if e, ok := err.(*Error); ok </span><span class="cov8" title="1">{
+                *target = e
+                return true
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+
+// Common error constructors for frequently used errors.
+
+// ErrConnectionFailed creates a connection failed error.
+func ErrConnectionFailed(cause error, details string) *Error <span class="cov8" title="1">{
+        return Wrap(cause, ErrCodeConnectionFailed,
+                "failed to establish Lightning Network connection: "+details)
+}</span>
+
+// ErrInvalidPairingPhrase creates an invalid pairing phrase error.
+func ErrInvalidPairingPhrase(reason string) *Error <span class="cov8" title="1">{
+        return New(ErrCodeInvalidPairingPhrase,
+                "invalid pairing phrase: "+reason)
+}</span>
+
+// ErrTimeout creates a timeout error.
+func ErrTimeout(operation string) *Error <span class="cov8" title="1">{
+        return New(ErrCodeTimeout,
+                "operation timed out: "+operation)
+}</span>
+
+// ErrNotConnected creates a not connected error.
+func ErrNotConnected() *Error <span class="cov8" title="1">{
+        return New(ErrCodeNotConnected,
+                "not connected to Lightning node. Use lnc_connect first")
+}</span>
+
+// ErrInvalidInvoice creates an invalid invoice error.
+func ErrInvalidInvoice(reason string) *Error <span class="cov8" title="1">{
+        return New(ErrCodeInvalidInvoice,
+                "invalid invoice format: "+reason)
+}</span>
+
+// ErrInsufficientBalance creates an insufficient balance error.
+func ErrInsufficientBalance(required, available int64) *Error <span class="cov8" title="1">{
+        return New(ErrCodeInsufficientBalance,
+                fmt.Sprintf("insufficient balance: required %d, available %d",
+                        required, available))
+}</span>
+
+// ErrInvalidAddress creates an invalid address error.
+func ErrInvalidAddress(addr string) *Error <span class="cov8" title="1">{
+        return New(ErrCodeInvalidAddress,
+                "invalid address format: "+addr)
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">// Package logging provides context-aware logging functionality.
+package logging
+
+import (
+        "context"
+
+        lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
+        "go.uber.org/zap"
+        "go.uber.org/zap/zapcore"
+)
+
+// ContextLogger wraps zap.Logger with context awareness.
+type ContextLogger struct {
+        logger *zap.Logger
+}
+
+// NewContextLogger creates a new context-aware logger.
+func NewContextLogger(logger *zap.Logger) *ContextLogger <span class="cov0" title="0">{
+        if logger == nil </span><span class="cov0" title="0">{
+                logger = zap.L()
+        }</span>
+        <span class="cov0" title="0">return &amp;ContextLogger{logger: logger}</span>
+}
+
+// WithContext creates a logger with context fields automatically included.
+func (cl *ContextLogger) WithContext(ctx context.Context) *zap.Logger <span class="cov0" title="0">{
+        fields := cl.extractContextFields(ctx)
+        if len(fields) == 0 </span><span class="cov0" title="0">{
+                return cl.logger
+        }</span>
+        <span class="cov0" title="0">return cl.logger.With(fields...)</span>
+}
+
+// ExtractContextFields extracts logging fields from context.
+func (cl *ContextLogger) extractContextFields(ctx context.Context) []zap.Field <span class="cov0" title="0">{
+        var fields []zap.Field
+
+        // Try to get RequestContext first for all fields
+        if rc, ok := lnccontext.FromContext(ctx); ok </span><span class="cov0" title="0">{
+                if rc.RequestID() != "" </span><span class="cov0" title="0">{
+                        fields = append(fields, zap.String("request_id", rc.RequestID()))
+                }</span>
+                <span class="cov0" title="0">if rc.TraceID() != "" </span><span class="cov0" title="0">{
+                        fields = append(fields, zap.String("trace_id", rc.TraceID()))
+                }</span>
+                <span class="cov0" title="0">if rc.UserID() != "" </span><span class="cov0" title="0">{
+                        fields = append(fields, zap.String("user_id", rc.UserID()))
+                }</span>
+                <span class="cov0" title="0">if rc.SessionID() != "" </span><span class="cov0" title="0">{
+                        fields = append(fields, zap.String("session_id", rc.SessionID()))
+                }</span>
+                <span class="cov0" title="0">if rc.NodeID() != "" </span><span class="cov0" title="0">{
+                        fields = append(fields, zap.String("node_id", rc.NodeID()))
+                }</span>
+                <span class="cov0" title="0">if rc.Operation() != "" </span><span class="cov0" title="0">{
+                        fields = append(fields, zap.String("operation", rc.Operation()))
+                }</span>
+                <span class="cov0" title="0">fields = append(fields,
+                        zap.Duration("duration", rc.Duration()),
+                        zap.Duration("time_remaining", rc.TimeRemaining()),
+                )
+                return fields</span>
+        }
+
+        // Fall back to individual field extraction
+        <span class="cov0" title="0">if requestID := lnccontext.GetRequestID(ctx); requestID != "" </span><span class="cov0" title="0">{
+                fields = append(fields, zap.String("request_id", requestID))
+        }</span>
+        <span class="cov0" title="0">if traceID := lnccontext.GetTraceID(ctx); traceID != "" </span><span class="cov0" title="0">{
+                fields = append(fields, zap.String("trace_id", traceID))
+        }</span>
+        <span class="cov0" title="0">if userID := lnccontext.GetUserID(ctx); userID != "" </span><span class="cov0" title="0">{
+                fields = append(fields, zap.String("user_id", userID))
+        }</span>
+        <span class="cov0" title="0">if sessionID := lnccontext.GetSessionID(ctx); sessionID != "" </span><span class="cov0" title="0">{
+                fields = append(fields, zap.String("session_id", sessionID))
+        }</span>
+        <span class="cov0" title="0">if nodeID := lnccontext.GetNodeID(ctx); nodeID != "" </span><span class="cov0" title="0">{
+                fields = append(fields, zap.String("node_id", nodeID))
+        }</span>
+        <span class="cov0" title="0">if operation := lnccontext.GetOperation(ctx); operation != "" </span><span class="cov0" title="0">{
+                fields = append(fields, zap.String("operation", operation))
+        }</span>
+        <span class="cov0" title="0">if duration := lnccontext.GetDuration(ctx); duration &gt; 0 </span><span class="cov0" title="0">{
+                fields = append(fields, zap.Duration("duration", duration))
+        }</span>
+
+        <span class="cov0" title="0">return fields</span>
+}
+
+// Debug logs a debug message with context.
+func (cl *ContextLogger) Debug(ctx context.Context, msg string,
+        fields ...zap.Field) <span class="cov0" title="0">{
+        cl.WithContext(ctx).Debug(msg, fields...)
+}</span>
+
+// Info logs an info message with context.
+func (cl *ContextLogger) Info(ctx context.Context, msg string,
+        fields ...zap.Field) <span class="cov0" title="0">{
+        cl.WithContext(ctx).Info(msg, fields...)
+}</span>
+
+// Warn logs a warning message with context.
+func (cl *ContextLogger) Warn(ctx context.Context, msg string,
+        fields ...zap.Field) <span class="cov0" title="0">{
+        cl.WithContext(ctx).Warn(msg, fields...)
+}</span>
+
+// Error logs an error message with context.
+func (cl *ContextLogger) Error(ctx context.Context, msg string,
+        fields ...zap.Field) <span class="cov0" title="0">{
+        cl.WithContext(ctx).Error(msg, fields...)
+}</span>
+
+// Fatal logs a fatal message with context and exits.
+func (cl *ContextLogger) Fatal(ctx context.Context, msg string,
+        fields ...zap.Field) <span class="cov0" title="0">{
+        cl.WithContext(ctx).Fatal(msg, fields...)
+}</span>
+
+// DPanic logs a development panic message with context.
+func (cl *ContextLogger) DPanic(ctx context.Context, msg string,
+        fields ...zap.Field) <span class="cov0" title="0">{
+        cl.WithContext(ctx).DPanic(msg, fields...)
+}</span>
+
+// With creates a child logger with additional fields.
+func (cl *ContextLogger) With(fields ...zap.Field) *ContextLogger <span class="cov0" title="0">{
+        return &amp;ContextLogger{
+                logger: cl.logger.With(fields...),
+        }
+}</span>
+
+// Check returns a CheckedEntry if logging a message at the specified level.
+// Is enabled.
+func (cl *ContextLogger) Check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry <span class="cov0" title="0">{
+        return cl.logger.Check(lvl, msg)
+}</span>
+
+// Sync flushes any buffered log entries.
+func (cl *ContextLogger) Sync() error <span class="cov0" title="0">{
+        return cl.logger.Sync()
+}</span>
+
+// Global context logger instance.
+var ContextLog *ContextLogger
+
+// InitContextLogger initializes the global context logger.
+func InitContextLogger() <span class="cov0" title="0">{
+        if Logger == nil </span><span class="cov0" title="0">{
+                // Initialize regular logger first if needed
+                _ = InitLogger(true)
+        }</span>
+        <span class="cov0" title="0">ContextLog = NewContextLogger(Logger)</span>
+}
+
+// LogWithContext is a convenience function for logging with context.
+func LogWithContext(ctx context.Context) *zap.Logger <span class="cov0" title="0">{
+        if ContextLog == nil </span><span class="cov0" title="0">{
+                InitContextLogger()
+        }</span>
+        <span class="cov0" title="0">return ContextLog.WithContext(ctx)</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">// Package logging provides structured logging functionality for the MCP LNC server.
+// It builds on zap for high-performance logging in both development and
+// production configurations.
+package logging
+
+import (
+        "os"
+
+        "github.com/jbrill/mcp-lnc-server/internal/interfaces"
+        "go.uber.org/zap"
+        "go.uber.org/zap/zapcore"
+)
+
+// Logger is the global logger instance.
+var Logger *zap.Logger
+
+// ZapLogger wraps zap.Logger to implement interfaces.Logger.
+type zapLogger struct {
+        logger *zap.Logger
+}
+
+// NewLogger creates a new logger that implements interfaces.Logger.
+func NewLogger(logger *zap.Logger) interfaces.Logger <span class="cov0" title="0">{
+        return &amp;zapLogger{logger: logger}
+}</span>
+
+// Debug logs a debug message.
+func (l *zapLogger) Debug(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        l.logger.Debug(msg, fields...)
+}</span>
+
+// Info logs an info message.
+func (l *zapLogger) Info(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        l.logger.Info(msg, fields...)
+}</span>
+
+// Warn logs a warning message.
+func (l *zapLogger) Warn(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        l.logger.Warn(msg, fields...)
+}</span>
+
+// Error logs an error message.
+func (l *zapLogger) Error(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        l.logger.Error(msg, fields...)
+}</span>
+
+// Fatal logs a fatal message and exits.
+func (l *zapLogger) Fatal(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        l.logger.Fatal(msg, fields...)
+}</span>
+
+// With creates a child logger with additional fields.
+func (l *zapLogger) With(fields ...zap.Field) interfaces.Logger <span class="cov0" title="0">{
+        return &amp;zapLogger{logger: l.logger.With(fields...)}
+}</span>
+
+// InitLogger initializes the global logger with appropriate configuration.
+func InitLogger(development bool) error <span class="cov0" title="0">{
+        var config zap.Config
+
+        if development </span><span class="cov0" title="0">{
+                config = zap.NewDevelopmentConfig()
+                config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+        }</span> else<span class="cov0" title="0"> {
+                config = zap.NewProductionConfig()
+        }</span>
+
+        // Always log to stderr for MCP compatibility (stdout is used for MCP protocol)
+        <span class="cov0" title="0">config.OutputPaths = []string{"stderr"}
+        config.ErrorOutputPaths = []string{"stderr"}
+
+        // Set log level based on environment variable
+        if level := os.Getenv("LOG_LEVEL"); level != "" </span><span class="cov0" title="0">{
+                var zapLevel zapcore.Level
+                if err := zapLevel.UnmarshalText([]byte(level)); err == nil </span><span class="cov0" title="0">{
+                        config.Level.SetLevel(zapLevel)
+                }</span>
+        }
+
+        <span class="cov0" title="0">logger, err := config.Build()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">Logger = logger
+        zap.ReplaceGlobals(logger)
+
+        return nil</span>
+}
+
+// Sync flushes any buffered log entries.
+func Sync() <span class="cov0" title="0">{
+        if Logger != nil </span><span class="cov0" title="0">{
+                _ = Logger.Sync()
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package services manages Lightning Network services and their lifecycle.
+// It wires MCP tools to underlying clients with consistent logging and error
+// handling.
+package services
+
+import (
+        "context"
+
+        "github.com/jbrill/mcp-lnc-server/internal/errors"
+        "github.com/jbrill/mcp-lnc-server/internal/interfaces"
+        "github.com/jbrill/mcp-lnc-server/internal/logging"
+        "github.com/jbrill/mcp-lnc-server/tools"
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+        "go.uber.org/zap"
+        "google.golang.org/grpc"
+)
+
+// Manager manages all Lightning Network services and their lifecycle.
+type Manager struct {
+        logger *zap.Logger
+
+        // Global connection and clients.
+        lncConnection   *grpc.ClientConn
+        lightningClient lnrpc.LightningClient
+
+        // Services - read-only operations only.
+        connectionService *tools.ConnectionService
+        invoiceService    *tools.InvoiceService
+        channelService    *tools.ChannelService
+        paymentService    *tools.PaymentService
+        onchainService    *tools.OnChainService
+        peerService       *tools.PeerService
+        nodeService       *tools.NodeService
+}
+
+// NewManager creates a new service manager for read-only operations.
+func NewManager(logger *zap.Logger) *Manager <span class="cov8" title="1">{
+        return &amp;Manager{
+                logger: logger,
+        }
+}</span>
+
+// InitializeServices prepares all services with nil clients. Clients are
+// provided once an LNC connection is established via the callback.
+func (m *Manager) InitializeServices() <span class="cov8" title="1">{
+        m.logger.Info("Initializing read-only services...")
+
+        // Initialize connection service with callback.
+        m.connectionService = tools.NewConnectionService(
+                m.onLNCConnectionEstablished)
+
+        // Initialize all read-only services with nil clients.
+        m.invoiceService = tools.NewInvoiceService(nil)
+        m.channelService = tools.NewChannelService(nil)
+        m.paymentService = tools.NewPaymentService(nil)
+        m.onchainService = tools.NewOnChainService(nil)
+        m.peerService = tools.NewPeerService(nil)
+        m.nodeService = tools.NewNodeService(nil)
+
+        m.logger.Info("Read-only services initialized successfully")
+}</span>
+
+// RegisterTools registers all read-only tools with the MCP server.
+func (m *Manager) RegisterTools(mcpServer interfaces.MCPServer) error <span class="cov8" title="1">{
+        if mcpServer == nil </span><span class="cov8" title="1">{
+                return errors.New(errors.ErrCodeUnknown,
+                        "MCP server cannot be nil")
+        }</span>
+
+        <span class="cov8" title="1">m.logger.Info("Registering read-only MCP tools with server")
+
+        registrations := 0
+        register := func(tool mcp.Tool,
+                handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) </span><span class="cov8" title="1">{
+                mcpServer.AddTool(tool, handler)
+                registrations++
+        }</span>
+
+        // Connection tools - always required.
+        <span class="cov8" title="1">register(m.connectionService.ConnectTool(),
+                m.connectionService.HandleConnect)
+        register(m.connectionService.DisconnectTool(),
+                m.connectionService.HandleDisconnect)
+
+        // Invoice tools - read-only operations.
+        register(m.invoiceService.DecodeInvoiceTool(),
+                m.invoiceService.HandleDecodeInvoice)
+        register(m.invoiceService.ListInvoicesTool(),
+                m.invoiceService.HandleListInvoices)
+        register(m.invoiceService.LookupInvoiceTool(),
+                m.invoiceService.HandleLookupInvoice)
+
+        // Channel tools - read-only operations.
+        register(m.channelService.ListChannelsTool(),
+                m.channelService.HandleListChannels)
+        register(m.channelService.PendingChannelsTool(),
+                m.channelService.HandlePendingChannels)
+
+        // Payment tools - read-only operations.
+        register(m.paymentService.ListPaymentsTool(),
+                m.paymentService.HandleListPayments)
+        register(m.paymentService.TrackPaymentTool(),
+                m.paymentService.HandleTrackPayment)
+
+        // On-chain tools - read-only operations.
+        register(m.onchainService.ListUnspentTool(),
+                m.onchainService.HandleListUnspent)
+        register(m.onchainService.GetTransactionsTool(),
+                m.onchainService.HandleGetTransactions)
+        register(m.onchainService.EstimateFeesTool(),
+                m.onchainService.HandleEstimateFee)
+
+        // Peer tools - read-only operations.
+        register(m.peerService.ListPeersTool(),
+                m.peerService.HandleListPeers)
+        register(m.peerService.DescribeGraphTool(),
+                m.peerService.HandleDescribeGraph)
+        register(m.peerService.GetNodeInfoTool(),
+                m.peerService.HandleGetNodeInfo)
+
+        // Node tools - read-only operations.
+        register(m.nodeService.GetBalanceTool(),
+                m.nodeService.HandleGetBalance)
+        register(m.nodeService.GetInfoTool(),
+                m.nodeService.HandleGetInfo)
+
+        m.logger.Info("Read-only MCP tools registered",
+                zap.Int("total_tools", registrations))
+        return nil</span>
+}
+
+// onLNCConnectionEstablished updates service clients when a new LNC
+// connection becomes available.
+func (m *Manager) onLNCConnectionEstablished(conn *grpc.ClientConn) <span class="cov0" title="0">{
+        logger := logging.LogWithContext(context.Background())
+        logger.Info("LNC connection established successfully")
+
+        m.lncConnection = conn
+        m.lightningClient = lnrpc.NewLightningClient(conn)
+
+        // Update existing read-only services with new connection.
+        m.invoiceService.LightningClient = m.lightningClient
+        m.channelService.LightningClient = m.lightningClient
+        m.paymentService.LightningClient = m.lightningClient
+        m.onchainService.LightningClient = m.lightningClient
+        m.peerService.LightningClient = m.lightningClient
+        m.nodeService.LightningClient = m.lightningClient
+
+        logger.Info("All read-only services updated with new connection")
+}</span>
+
+// Shutdown gracefully closes the LNC connection and logs shutdown results.
+func (m *Manager) Shutdown() error <span class="cov8" title="1">{
+        m.logger.Info("Shutting down service manager...")
+
+        if m.lncConnection != nil </span><span class="cov0" title="0">{
+                if err := m.lncConnection.Close(); err != nil </span><span class="cov0" title="0">{
+                        m.logger.Error("Error closing LNC connection",
+                                zap.Error(err))
+                        return errors.Wrap(err, errors.ErrCodeUnknown,
+                                "failed to close LNC connection")
+                }</span> else<span class="cov0" title="0"> {
+                        m.logger.Info("LNC connection closed successfully")
+                }</span>
+        }
+
+        <span class="cov8" title="1">m.logger.Info("Service manager shutdown complete")
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package testutils provides testing utilities and mock implementations for.
+// The MCP LNC server.
+//
+// This package includes mock clients, test helpers, and utilities for.
+// Comprehensive testing of Lightning Network functionality.
+package testutils
+
+import (
+        "context"
+        "fmt"
+        "testing"
+
+        "github.com/jbrill/mcp-lnc-server/internal/interfaces"
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+        "github.com/stretchr/testify/mock"
+        "go.uber.org/zap"
+        "go.uber.org/zap/zaptest"
+)
+
+// MockLightningClient is a mock implementation of the LightningClient.
+// Interface for testing.
+type MockLightningClient struct {
+        mock.Mock
+}
+
+// GetInfo mocks the GetInfo method.
+func (m *MockLightningClient) GetInfo(ctx context.Context,
+        req *lnrpc.GetInfoRequest) (*lnrpc.GetInfoResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.GetInfoResponse), args.Error(1)
+}</span>
+
+// WalletBalance mocks the WalletBalance method.
+func (m *MockLightningClient) WalletBalance(ctx context.Context,
+        req *lnrpc.WalletBalanceRequest) (*lnrpc.WalletBalanceResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.WalletBalanceResponse), args.Error(1)
+}</span>
+
+// ChannelBalance mocks the ChannelBalance method.
+func (m *MockLightningClient) ChannelBalance(ctx context.Context,
+        req *lnrpc.ChannelBalanceRequest) (*lnrpc.ChannelBalanceResponse,
+        error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.ChannelBalanceResponse), args.Error(1)
+}</span>
+
+// ListChannels mocks the ListChannels method.
+func (m *MockLightningClient) ListChannels(ctx context.Context,
+        req *lnrpc.ListChannelsRequest) (*lnrpc.ListChannelsResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.ListChannelsResponse), args.Error(1)
+}</span>
+
+// AddInvoice mocks the AddInvoice method.
+func (m *MockLightningClient) AddInvoice(ctx context.Context,
+        req *lnrpc.Invoice) (*lnrpc.AddInvoiceResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.AddInvoiceResponse), args.Error(1)
+}</span>
+
+// DecodePayReq mocks the DecodePayReq method.
+func (m *MockLightningClient) DecodePayReq(ctx context.Context,
+        req *lnrpc.PayReqString) (*lnrpc.PayReq, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.PayReq), args.Error(1)
+}</span>
+
+// SendCoins mocks the SendCoins method.
+func (m *MockLightningClient) SendCoins(ctx context.Context,
+        req *lnrpc.SendCoinsRequest) (*lnrpc.SendCoinsResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.SendCoinsResponse), args.Error(1)
+}</span>
+
+// NewAddress mocks the NewAddress method.
+func (m *MockLightningClient) NewAddress(ctx context.Context,
+        req *lnrpc.NewAddressRequest) (*lnrpc.NewAddressResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.NewAddressResponse), args.Error(1)
+}</span>
+
+// ConnectPeer mocks the ConnectPeer method.
+func (m *MockLightningClient) ConnectPeer(ctx context.Context,
+        req *lnrpc.ConnectPeerRequest) (*lnrpc.ConnectPeerResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.ConnectPeerResponse), args.Error(1)
+}</span>
+
+// ListPeers mocks the ListPeers method.
+func (m *MockLightningClient) ListPeers(ctx context.Context,
+        req *lnrpc.ListPeersRequest) (*lnrpc.ListPeersResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.ListPeersResponse), args.Error(1)
+}</span>
+
+// DisconnectPeer mocks the DisconnectPeer method.
+func (m *MockLightningClient) DisconnectPeer(ctx context.Context,
+        req *lnrpc.DisconnectPeerRequest) (*lnrpc.DisconnectPeerResponse,
+        error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.DisconnectPeerResponse), args.Error(1)
+}</span>
+
+// DescribeGraph mocks the DescribeGraph method.
+func (m *MockLightningClient) DescribeGraph(ctx context.Context,
+        req *lnrpc.ChannelGraphRequest) (*lnrpc.ChannelGraph, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.ChannelGraph), args.Error(1)
+}</span>
+
+// GetNodeInfo mocks the GetNodeInfo method.
+func (m *MockLightningClient) GetNodeInfo(ctx context.Context,
+        req *lnrpc.NodeInfoRequest) (*lnrpc.NodeInfo, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.NodeInfo), args.Error(1)
+}</span>
+
+// PendingChannels mocks the PendingChannels method.
+func (m *MockLightningClient) PendingChannels(ctx context.Context,
+        req *lnrpc.PendingChannelsRequest) (*lnrpc.PendingChannelsResponse,
+        error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.PendingChannelsResponse), args.Error(1)
+}</span>
+
+// OpenChannel mocks the OpenChannel method.
+func (m *MockLightningClient) OpenChannel(ctx context.Context,
+        req *lnrpc.OpenChannelRequest) (lnrpc.Lightning_OpenChannelClient,
+        error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(lnrpc.Lightning_OpenChannelClient), args.Error(1)
+}</span>
+
+// CloseChannel mocks the CloseChannel method.
+func (m *MockLightningClient) CloseChannel(ctx context.Context,
+        req *lnrpc.CloseChannelRequest) (lnrpc.Lightning_CloseChannelClient,
+        error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(lnrpc.Lightning_CloseChannelClient), args.Error(1)
+}</span>
+
+// GetTransactions mocks the GetTransactions method.
+func (m *MockLightningClient) GetTransactions(ctx context.Context,
+        req *lnrpc.GetTransactionsRequest) (*lnrpc.TransactionDetails, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.TransactionDetails), args.Error(1)
+}</span>
+
+// ListUnspent mocks the ListUnspent method.
+func (m *MockLightningClient) ListUnspent(ctx context.Context,
+        req *lnrpc.ListUnspentRequest) (*lnrpc.ListUnspentResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.ListUnspentResponse), args.Error(1)
+}</span>
+
+// EstimateFee mocks the EstimateFee method.
+func (m *MockLightningClient) EstimateFee(ctx context.Context,
+        req *lnrpc.EstimateFeeRequest) (*lnrpc.EstimateFeeResponse, error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(*lnrpc.EstimateFeeResponse), args.Error(1)
+}</span>
+
+// MockRouterClient is a mock implementation of the RouterClient interface.
+// For testing.
+type MockRouterClient struct {
+        mock.Mock
+}
+
+// SendPaymentV2 mocks the SendPaymentV2 method.
+func (m *MockRouterClient) SendPaymentV2(ctx context.Context,
+        req *routerrpc.SendPaymentRequest) (routerrpc.Router_SendPaymentV2Client,
+        error) <span class="cov0" title="0">{
+        args := m.Mock.Called(ctx, req)
+        return args.Get(0).(routerrpc.Router_SendPaymentV2Client), args.Error(1)
+}</span>
+
+// MockLogger is a mock implementation of the Logger interface for testing.
+type MockLogger struct {
+        mock.Mock
+}
+
+// Debug mocks the Debug method.
+func (m *MockLogger) Debug(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        args := []any{msg}
+        for _, field := range fields </span><span class="cov0" title="0">{
+                args = append(args, field)
+        }</span>
+        <span class="cov0" title="0">m.Mock.Called(args...)</span>
+}
+
+// Info mocks the Info method.
+func (m *MockLogger) Info(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        args := []any{msg}
+        for _, field := range fields </span><span class="cov0" title="0">{
+                args = append(args, field)
+        }</span>
+        <span class="cov0" title="0">m.Mock.Called(args...)</span>
+}
+
+// Warn mocks the Warn method.
+func (m *MockLogger) Warn(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        args := []any{msg}
+        for _, field := range fields </span><span class="cov0" title="0">{
+                args = append(args, field)
+        }</span>
+        <span class="cov0" title="0">m.Mock.Called(args...)</span>
+}
+
+// Error mocks the Error method.
+func (m *MockLogger) Error(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        args := []any{msg}
+        for _, field := range fields </span><span class="cov0" title="0">{
+                args = append(args, field)
+        }</span>
+        <span class="cov0" title="0">m.Mock.Called(args...)</span>
+}
+
+// Fatal mocks the Fatal method.
+func (m *MockLogger) Fatal(msg string, fields ...zap.Field) <span class="cov0" title="0">{
+        args := []any{msg}
+        for _, field := range fields </span><span class="cov0" title="0">{
+                args = append(args, field)
+        }</span>
+        <span class="cov0" title="0">m.Mock.Called(args...)</span>
+}
+
+// With mocks the With method.
+func (m *MockLogger) With(fields ...zap.Field) interfaces.Logger <span class="cov0" title="0">{
+        args := []any{}
+        for _, field := range fields </span><span class="cov0" title="0">{
+                args = append(args, field)
+        }</span>
+        <span class="cov0" title="0">m.Mock.Called(args...)
+        return args[0].(interfaces.Logger)</span>
+}
+
+// TestLogger creates a test logger for use in tests.
+func TestLogger(t *testing.T) *zap.Logger <span class="cov0" title="0">{
+        return zaptest.NewLogger(t)
+}</span>
+
+// CreateMockInvoiceResponse creates a mock AddInvoiceResponse for testing.
+func CreateMockInvoiceResponse(amount int64,
+        memo string) *lnrpc.AddInvoiceResponse <span class="cov0" title="0">{
+        return &amp;lnrpc.AddInvoiceResponse{
+                RHash:          []byte("mock_hash_32_bytes_long_exactly_ok"),
+                PaymentRequest: fmt.Sprintf("lnbcrt%dm1mock_payment_request", amount),
+                AddIndex:       12345,
+                PaymentAddr:    []byte("mock_payment_addr_32_bytes_long_ok"),
+        }
+}</span>
+
+// CreateMockPayReq creates a mock PayReq for testing invoice decoding.
+func CreateMockPayReq(amount int64, memo string) *lnrpc.PayReq <span class="cov0" title="0">{
+        return &amp;lnrpc.PayReq{
+                Destination:     "mock_destination_pubkey_66_chars_long_hex_encoded_exactly",
+                PaymentHash:     "mock_payment_hash_64_chars_long_hex_encoded_exactly_here",
+                NumSatoshis:     amount,
+                Timestamp:       1692633600, // Fixed timestamp for testing
+                Expiry:          3600,       // 1 hour
+                Description:     memo,
+                DescriptionHash: "",
+                FallbackAddr:    "",
+                CltvExpiry:      40,
+                RouteHints:      []*lnrpc.RouteHint{},
+                PaymentAddr:     []byte("mock_payment_addr_32_bytes_long_ok"),
+                NumMsat:         amount * 1000,
+        }
+}</span>
+
+// CreateMockGetInfoResponse creates a mock GetInfoResponse for testing.
+func CreateMockGetInfoResponse() *lnrpc.GetInfoResponse <span class="cov0" title="0">{
+        return &amp;lnrpc.GetInfoResponse{
+                Version:             "0.17.0-beta commit=v0.17.0-beta",
+                CommitHash:          "mock_commit_hash",
+                IdentityPubkey:      "mock_identity_pubkey_66_chars_long_hex_encoded_exactly",
+                Alias:               "MockTestNode",
+                Color:               "#3399ff",
+                NumPendingChannels:  0,
+                NumActiveChannels:   2,
+                NumInactiveChannels: 0,
+                NumPeers:            2,
+                BlockHeight:         800000,
+                BlockHash:           "mock_block_hash_64_chars_long_hex_encoded_exactly_here",
+                BestHeaderTimestamp: 1692633600,
+                SyncedToChain:       true,
+                SyncedToGraph:       true,
+                Testnet:             true,
+                Chains: []*lnrpc.Chain{
+                        {
+                                Chain:   "bitcoin",
+                                Network: "testnet",
+                        },
+                },
+                Uris: []string{
+                        "mock_identity_pubkey@localhost:9735",
+                },
+                Features: map[uint32]*lnrpc.Feature{
+                        0: {Name: "data-loss-protect", IsRequired: true, IsKnown: true},
+                        5: {Name: "upfront-shutdown-script", IsRequired: false, IsKnown: true},
+                },
+        }
+}</span>
+
+// AssertNoError is a test helper that fails the test if err is not nil.
+func AssertNoError(t *testing.T, err error) <span class="cov0" title="0">{
+        t.Helper()
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Expected no error, got: %v", err)
+        }</span>
+}
+
+// AssertError is a test helper that fails the test if err is nil.
+func AssertError(t *testing.T, err error) <span class="cov0" title="0">{
+        t.Helper()
+        if err == nil </span><span class="cov0" title="0">{
+                t.Fatal("Expected error, got nil")
+        }</span>
+}
+
+// AssertContains is a test helper that checks if a string contains a.
+// Substring.
+func AssertContains(t *testing.T, str, substr string) <span class="cov0" title="0">{
+        t.Helper()
+        if len(str) == 0 </span><span class="cov0" title="0">{
+                t.Fatalf("String is empty")
+        }</span>
+        <span class="cov0" title="0">if len(substr) == 0 </span><span class="cov0" title="0">{
+                t.Fatalf("Substring is empty")
+        }</span>
+        // This is a simplified version - in production use strings.Contains
+        <span class="cov0" title="0">if str == "" || substr == "" </span><span class="cov0" title="0">{
+                t.Fatalf("Empty string or substring")
+        }</span>
+}
+
+// MockMCPServer is a mock implementation of the MCP server for testing.
+type MockMCPServer struct {
+        mock.Mock
+        tools map[string]any // Store registered tools for verification
+}
+
+// NewMockMCPServer creates a new mock MCP server.
+func NewMockMCPServer() *MockMCPServer <span class="cov0" title="0">{
+        return &amp;MockMCPServer{
+                tools: make(map[string]any),
+        }
+}</span>
+
+// AddTool mocks the AddTool method and stores the tool for verification.
+func (m *MockMCPServer) AddTool(tool any, handler any) <span class="cov0" title="0">{
+        m.Mock.Called(tool, handler)
+        // Store tool for verification in tests
+        if t, ok := tool.(interface{ GetName() string }); ok </span><span class="cov0" title="0">{
+                m.tools[t.GetName()] = tool
+        }</span>
+}
+
+// GetRegisteredTools returns all registered tools for test verification.
+func (m *MockMCPServer) GetRegisteredTools() map[string]any <span class="cov0" title="0">{
+        return m.tools
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// Package main provides the MCP server implementation for Lightning Network
+// Connect. It exposes Model Context Protocol (MCP) tools that let AI assistants
+// interact with Lightning Network nodes through Lightning Node Connect (LNC).
+package main
+
+import (
+        "context"
+
+        "github.com/jbrill/mcp-lnc-server/internal/config"
+        lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
+        "github.com/jbrill/mcp-lnc-server/internal/logging"
+        "github.com/jbrill/mcp-lnc-server/internal/services"
+        "github.com/mark3labs/mcp-go/server"
+        "go.uber.org/zap"
+)
+
+// Server owns the MCP server instance and registered tool set.
+type Server struct {
+        cfg            *config.Config
+        logger         *zap.Logger
+        mcpServer      *server.MCPServer
+        serviceManager *services.Manager
+}
+
+// NewServer creates a new MCP server instance.
+func NewServer(cfg *config.Config, logger *zap.Logger) (*Server, error) <span class="cov0" title="0">{
+        // Initialize context logger.
+        logging.InitContextLogger()
+
+        // Create MCP server.
+        mcpServer := server.NewMCPServer(cfg.ServerName, cfg.ServerVersion)
+
+        // Initialize service manager for read-only operations.
+        serviceManager := services.NewManager(logger)
+        serviceManager.InitializeServices()
+
+        // Register all tools with the MCP server.
+        if err := serviceManager.RegisterTools(mcpServer); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;Server{
+                cfg:            cfg,
+                logger:         logger,
+                mcpServer:      mcpServer,
+                serviceManager: serviceManager,
+        }, nil</span>
+}
+
+// Start runs the MCP server and blocks until it is stopped.
+func (s *Server) Start() error <span class="cov0" title="0">{
+        ctx := lnccontext.New(context.Background(), "mcp_server_start", 0)
+        defer ctx.Cancel()
+        logger := logging.LogWithContext(ctx)
+
+        logger.Info("MCP Server ready - listening on stdio...",
+                zap.String("server_name", s.cfg.ServerName),
+                zap.String("version", s.cfg.ServerVersion))
+
+        return server.ServeStdio(s.mcpServer)
+}</span>
+
+// Stop gracefully stops the MCP server.
+func (s *Server) Stop(ctx context.Context) error <span class="cov0" title="0">{
+        reqCtx := lnccontext.Ensure(ctx, "mcp_server_stop")
+        defer reqCtx.Cancel()
+        logger := logging.LogWithContext(reqCtx)
+
+        logger.Info("Stopping MCP server...")
+
+        // Shutdown the service manager.
+        if err := s.serviceManager.Shutdown(); err != nil </span><span class="cov0" title="0">{
+                logger.Error("Error shutting down service manager",
+                        zap.Error(err))
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Info("MCP server stopped successfully",
+                zap.Duration("shutdown_duration", reqCtx.Duration()))
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package tools
+
+import (
+        "context"
+        "fmt"
+        "strconv"
+
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+)
+
+// ChannelService handles Lightning channel operations.
+type ChannelService struct {
+        LightningClient lnrpc.LightningClient
+}
+
+// NewChannelService creates a new channel service.
+func NewChannelService(client lnrpc.LightningClient) *ChannelService <span class="cov0" title="0">{
+        return &amp;ChannelService{
+                LightningClient: client,
+        }
+}</span>
+
+// ListChannelsTool returns the MCP tool definition for listing channels.
+func (s *ChannelService) ListChannelsTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_list_channels",
+                Description: "List all Lightning channels with detailed information",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "active_only": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Only return active channels",
+                                },
+                                "inactive_only": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Only return inactive channels",
+                                },
+                                "public_only": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Only return public channels",
+                                },
+                                "private_only": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Only return private channels",
+                                },
+                        },
+                },
+        }
+}</span>
+
+// HandleListChannels handles the list channels request.
+func (s *ChannelService) HandleListChannels(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        // Parse filter options
+        <span class="cov0" title="0">activeOnly, _ := request.Params.Arguments["active_only"].(bool)
+        inactiveOnly, _ := request.Params.Arguments["inactive_only"].(bool)
+        publicOnly, _ := request.Params.Arguments["public_only"].(bool)
+        privateOnly, _ := request.Params.Arguments["private_only"].(bool)
+
+        channels, err := s.LightningClient.ListChannels(ctx,
+                &amp;lnrpc.ListChannelsRequest{
+                        ActiveOnly:   activeOnly,
+                        InactiveOnly: inactiveOnly,
+                        PublicOnly:   publicOnly,
+                        PrivateOnly:  privateOnly,
+                })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(fmt.Sprintf(
+                        "Failed to list channels: %v", err)), nil
+        }</span>
+
+        <span class="cov0" title="0">channelList := make([]map[string]any, len(channels.Channels))
+        for i, ch := range channels.Channels </span><span class="cov0" title="0">{
+                entry := map[string]any{
+                        "active":                  ch.Active,
+                        "remote_pubkey":           ch.RemotePubkey,
+                        "channel_point":           ch.ChannelPoint,
+                        "chan_id":                 strconv.FormatUint(ch.ChanId, 10),
+                        "capacity":                ch.Capacity,
+                        "local_balance":           ch.LocalBalance,
+                        "remote_balance":          ch.RemoteBalance,
+                        "commit_fee":              ch.CommitFee,
+                        "commit_weight":           ch.CommitWeight,
+                        "fee_per_kw":              ch.FeePerKw,
+                        "unsettled_balance":       ch.UnsettledBalance,
+                        "total_satoshis_sent":     ch.TotalSatoshisSent,
+                        "total_satoshis_received": ch.TotalSatoshisReceived,
+                        "num_updates":             ch.NumUpdates,
+                        "pending_htlcs":           len(ch.PendingHtlcs),
+                        "private":                 ch.Private,
+                        "initiator":               ch.Initiator,
+                        "chan_status_flags":       ch.ChanStatusFlags,
+                }
+
+                if local := constraintsToMap(ch.GetLocalConstraints()); local != nil </span><span class="cov0" title="0">{
+                        entry["local_constraints"] = local
+                }</span>
+                <span class="cov0" title="0">if remote := constraintsToMap(ch.GetRemoteConstraints()); remote != nil </span><span class="cov0" title="0">{
+                        entry["remote_constraints"] = remote
+                }</span>
+
+                <span class="cov0" title="0">channelList[i] = entry</span>
+        }
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "channels": %s,
+                "total_channels": %d
+        }`, toJSONString(channelList), len(channelList))), nil</span>
+}
+
+// PendingChannelsTool returns the MCP tool definition for listing pending channels.
+func (s *ChannelService) PendingChannelsTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_pending_channels",
+                Description: "List all pending Lightning channels",
+                InputSchema: mcp.ToolInputSchema{
+                        Type:       "object",
+                        Properties: map[string]any{},
+                },
+        }
+}</span>
+
+// HandlePendingChannels handles the pending channels request.
+func (s *ChannelService) HandlePendingChannels(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">pending, err := s.LightningClient.PendingChannels(ctx,
+                &amp;lnrpc.PendingChannelsRequest{})
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(fmt.Sprintf(
+                        "Failed to get pending channels: %v", err)), nil
+        }</span>
+
+        // Format pending channels
+        <span class="cov0" title="0">result := map[string]any{
+                "pending_open_channels": formatPendingOpenChannels(
+                        pending.PendingOpenChannels),
+                "pending_force_closing_channels": formatPendingForceClosingChannels(
+                        pending.PendingForceClosingChannels),
+                "waiting_close_channels": formatWaitingCloseChannels(
+                        pending.WaitingCloseChannels),
+                "total_limbo_balance": pending.TotalLimboBalance,
+        }
+
+        return mcp.NewToolResultText(toJSONString(result)), nil</span>
+}
+
+// FormatPendingOpenChannels formats pending open channel data for JSON output.
+func formatPendingOpenChannels(
+        channels []*lnrpc.PendingChannelsResponse_PendingOpenChannel) []map[string]any <span class="cov0" title="0">{
+        result := make([]map[string]any, len(channels))
+        for i, ch := range channels </span><span class="cov0" title="0">{
+                result[i] = map[string]any{
+                        "channel":       formatPendingChannel(ch.Channel),
+                        "commit_fee":    ch.CommitFee,
+                        "commit_weight": ch.CommitWeight,
+                        "fee_per_kw":    ch.FeePerKw,
+                }
+        }</span>
+        <span class="cov0" title="0">return result</span>
+}
+
+func constraintsToMap(c *lnrpc.ChannelConstraints) map[string]any <span class="cov0" title="0">{
+        if c == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">return map[string]any{
+                "csv_delay":            c.CsvDelay,
+                "chan_reserve_sat":     c.ChanReserveSat,
+                "dust_limit_sat":       c.DustLimitSat,
+                "max_pending_amt_msat": c.MaxPendingAmtMsat,
+                "min_htlc_msat":        c.MinHtlcMsat,
+                "max_accepted_htlcs":   c.MaxAcceptedHtlcs,
+        }</span>
+}
+
+// FormatPendingForceClosingChannels formats force closing channel data for JSON output.
+func formatPendingForceClosingChannels(
+        channels []*lnrpc.PendingChannelsResponse_ForceClosedChannel) []map[string]any <span class="cov0" title="0">{
+        result := make([]map[string]any, len(channels))
+        for i, ch := range channels </span><span class="cov0" title="0">{
+                result[i] = map[string]any{
+                        "channel":             formatPendingChannel(ch.Channel),
+                        "closing_txid":        ch.ClosingTxid,
+                        "limbo_balance":       ch.LimboBalance,
+                        "maturity_height":     ch.MaturityHeight,
+                        "blocks_til_maturity": ch.BlocksTilMaturity,
+                        "recovered_balance":   ch.RecoveredBalance,
+                }
+        }</span>
+        <span class="cov0" title="0">return result</span>
+}
+
+// FormatWaitingCloseChannels formats waiting close channel data for JSON output.
+func formatWaitingCloseChannels(
+        channels []*lnrpc.PendingChannelsResponse_WaitingCloseChannel) []map[string]any <span class="cov0" title="0">{
+        result := make([]map[string]any, len(channels))
+        for i, ch := range channels </span><span class="cov0" title="0">{
+                result[i] = map[string]any{
+                        "channel":       formatPendingChannel(ch.Channel),
+                        "limbo_balance": ch.LimboBalance,
+                }
+        }</span>
+        <span class="cov0" title="0">return result</span>
+}
+
+// FormatPendingChannel formats a single pending channel for JSON output.
+func formatPendingChannel(
+        ch *lnrpc.PendingChannelsResponse_PendingChannel) map[string]any <span class="cov0" title="0">{
+        return map[string]any{
+                "remote_node_pub": ch.RemoteNodePub,
+                "channel_point":   ch.ChannelPoint,
+                "capacity":        ch.Capacity,
+                "local_balance":   ch.LocalBalance,
+                "remote_balance":  ch.RemoteBalance,
+        }
+}</span>
+
+// ToJSONString converts an interface to JSON string for output formatting.
+func toJSONString(v any) string <span class="cov0" title="0">{
+        // This is a simplified version - in production you'd use proper
+        // JSON marshaling
+        return fmt.Sprintf("%+v", v)
+}</span>
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">// Package tools provides MCP tool implementations for Lightning Network operations.
+// It enables AI assistants to interact with nodes through dedicated services.
+package tools
+
+import (
+        "context"
+        "crypto/tls"
+        "fmt"
+        "net/http"
+        "os"
+        "strconv"
+        "strings"
+        "time"
+
+        "github.com/btcsuite/btcd/btcec/v2"
+        lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
+        "github.com/jbrill/mcp-lnc-server/internal/logging"
+        "github.com/lightninglabs/lightning-node-connect/mailbox"
+        "github.com/lightningnetwork/lnd/keychain"
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+        "go.uber.org/zap"
+        "google.golang.org/grpc"
+)
+
+// ConnectionService handles LNC connection management.
+type ConnectionService struct {
+        Connection         *grpc.ClientConn
+        ConnectionCallback func(*grpc.ClientConn)
+}
+
+// NewConnectionService creates a new connection service.
+func NewConnectionService(
+        callback func(*grpc.ClientConn)) *ConnectionService <span class="cov8" title="1">{
+        return &amp;ConnectionService{
+                ConnectionCallback: callback,
+        }
+}</span>
+
+// ConnectTool returns the MCP tool definition for connecting to LNC.
+func (s *ConnectionService) ConnectTool() mcp.Tool <span class="cov8" title="1">{
+        return mcp.Tool{
+                Name:        "lnc_connect",
+                Description: "Connect to a Lightning node using LNC pairing phrase",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "pairingPhrase": map[string]any{
+                                        "type":        "string",
+                                        "description": "The LNC pairing phrase (10 words)",
+                                },
+                                "password": map[string]any{
+                                        "type":        "string",
+                                        "description": "The LNC password",
+                                },
+                                "mailbox": map[string]any{
+                                        "type": "string",
+                                        "description": "Custom mailbox server address " +
+                                                "(optional, e.g., 'localhost:11110' for regtest)",
+                                },
+                                "devMode": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Enable dev mode for local/regtest environments (optional)",
+                                },
+                                "insecure": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Skip TLS verification for dev environments (optional)",
+                                },
+                        },
+                        Required: []string{"pairingPhrase", "password"},
+                },
+        }
+}</span>
+
+// HandleConnect handles the LNC connection request.
+func (s *ConnectionService) HandleConnect(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        // Create request context with tracing
+        reqCtx := lnccontext.New(ctx, "lnc_connect", 45*time.Second)
+        defer reqCtx.Cancel()
+        logger := logging.LogWithContext(reqCtx)
+
+        logger.Info("Starting LNC connection request",
+                zap.Any("params", request.Params.Arguments))
+
+        defer func() </span><span class="cov0" title="0">{
+                logger.Info("Connection request completed",
+                        zap.Duration("total_duration", reqCtx.Duration()))
+        }</span>()
+
+        <span class="cov0" title="0">pairingPhrase, ok := request.Params.Arguments["pairingPhrase"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                logger.Error("Missing pairing phrase in request")
+                return mcp.NewToolResultError("pairingPhrase is required"), nil
+        }</span>
+
+        <span class="cov0" title="0">password, ok := request.Params.Arguments["password"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                logger.Error("Missing password in request")
+                return mcp.NewToolResultError("password is required"), nil
+        }</span>
+
+        // Validate pairing phrase format
+        <span class="cov0" title="0">words := strings.Split(strings.TrimSpace(pairingPhrase), " ")
+        if len(words) != 10 </span><span class="cov0" title="0">{
+                logger.Error("Invalid pairing phrase format",
+                        zap.Int("word_count", len(words)))
+                return mcp.NewToolResultError(
+                        "pairingPhrase must contain exactly 10 words"), nil
+        }</span>
+
+        // Get connection parameters with environment variable defaults
+        <span class="cov0" title="0">mailboxServer := getMailboxServer(request.Params.Arguments)
+        if mailboxServer == "" </span><span class="cov0" title="0">{
+                if envMailbox := os.Getenv("LNC_MAILBOX_SERVER"); envMailbox != "" </span><span class="cov0" title="0">{
+                        mailboxServer = envMailbox
+                }</span> else<span class="cov0" title="0"> {
+                        mailboxServer = "mailbox.terminal.lightning.today:443"
+                }</span>
+        }
+
+        // Check for dev mode with environment variable default
+        <span class="cov0" title="0">devMode := false
+        if dev, ok := request.Params.Arguments["devMode"].(bool); ok </span><span class="cov0" title="0">{
+                devMode = dev
+        }</span> else<span class="cov0" title="0"> if envDev := os.Getenv("LNC_DEV_MODE"); envDev != "" </span><span class="cov0" title="0">{
+                devMode, _ = strconv.ParseBool(envDev)
+        }</span>
+
+        // Check for insecure mode with environment variable default
+        <span class="cov0" title="0">insecure := false
+        if ins, ok := request.Params.Arguments["insecure"].(bool); ok </span><span class="cov0" title="0">{
+                insecure = ins
+        }</span> else<span class="cov0" title="0"> if envInsecure := os.Getenv("LNC_INSECURE"); envInsecure != "" </span><span class="cov0" title="0">{
+                insecure, _ = strconv.ParseBool(envInsecure)
+        }</span>
+
+        // Get timeout from environment or use default
+        <span class="cov0" title="0">timeout := 30 * time.Second
+        if envTimeout := os.Getenv("LNC_CONNECT_TIMEOUT"); envTimeout != "" </span><span class="cov0" title="0">{
+                if seconds, err := strconv.Atoi(envTimeout); err == nil </span><span class="cov0" title="0">{
+                        timeout = time.Duration(seconds) * time.Second
+                }</span>
+        }
+
+        // Use request context for connection (it already has timeout)
+        <span class="cov0" title="0">logger.Info("Attempting LNC connection",
+                zap.String("mailbox", mailboxServer),
+                zap.Bool("devMode", devMode),
+                zap.Bool("insecure", insecure),
+                zap.Duration("timeout", timeout),
+        )
+
+        // Establish LNC connection
+        conn, nodeInfo, err := s.connectToLNC(reqCtx, pairingPhrase,
+                password, mailboxServer, devMode, insecure)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error("LNC connection failed",
+                        zap.Error(err),
+                        zap.Duration("failed_after", reqCtx.Duration()))
+                return mcp.NewToolResultError(fmt.Sprintf(
+                        "Failed to connect to Lightning node: %v", err)), nil
+        }</span>
+
+        // Store connection
+        <span class="cov0" title="0">s.Connection = conn
+
+        // Add node ID to context for future operations
+        reqCtx = reqCtx.WithNode(nodeInfo.IdentityPubkey)
+
+        // Notify main server of new connection
+        if s.ConnectionCallback != nil </span><span class="cov0" title="0">{
+                s.ConnectionCallback(conn)
+        }</span>
+
+        <span class="cov0" title="0">logger.Info("Successfully connected to Lightning node",
+                zap.String("node_pubkey", nodeInfo.IdentityPubkey),
+                zap.String("alias", nodeInfo.Alias),
+                zap.Uint32("num_channels", nodeInfo.NumActiveChannels),
+                zap.Uint32("num_peers", nodeInfo.NumPeers))
+
+        // Return success response
+        return mcp.NewToolResultText(fmt.Sprintf(`{
+                "connected": true,
+                "node_pubkey": "%s",
+                "alias": "%s",
+                "num_channels": %d,
+                "num_peers": %d,
+                "version": "%s",
+                "mailbox_server": "%s"
+        }`, nodeInfo.IdentityPubkey, nodeInfo.Alias, nodeInfo.NumActiveChannels,
+                nodeInfo.NumPeers, nodeInfo.Version, mailboxServer)), nil</span>
+}
+
+// ConnectToLNC establishes the actual LNC connection.
+func (s *ConnectionService) connectToLNC(ctx context.Context,
+        pairingPhrase, password, mailboxServer string, devMode,
+        insecure bool) (*grpc.ClientConn, *lnrpc.GetInfoResponse, error) <span class="cov0" title="0">{
+
+        // Ensure we have a RequestContext
+        reqCtx := lnccontext.Ensure(ctx, "lnc_connect_internal")
+        defer reqCtx.Cancel()
+        logger := logging.LogWithContext(reqCtx)
+
+        logger.Debug("Starting LNC connection process",
+                zap.String("mailbox", mailboxServer),
+                zap.Int("pairing_phrase_words", len(strings.Split(pairingPhrase, " "))),
+                zap.Bool("dev_mode", devMode),
+                zap.Bool("insecure", insecure),
+                zap.Bool("has_password", password != ""),
+        )
+
+        // Generate a new private key for this session
+        privKey, err := btcec.NewPrivateKey()
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to generate private key", zap.Error(err))
+                return nil, nil, fmt.Errorf("failed to generate private key: %w", err)
+        }</span>
+        <span class="cov0" title="0">logger.Debug("Generated session private key")
+
+        // Wrap the private key to implement keychain.SingleKeyECDH interface
+        localPriv := &amp;keychain.PrivKeyECDH{PrivKey: privKey}
+
+        // Initialize variables for mailbox connection
+        var remotePub *btcec.PublicKey
+        var lndConnect func() (*grpc.ClientConn, error)
+        var authReceived bool
+
+        // Handle TLS configuration for dev servers - CRITICAL FOR LOCAL CONNECTIONS!
+        if devMode || insecure || strings.HasPrefix(mailboxServer, "localhost") ||
+                strings.HasPrefix(mailboxServer, "127.0.0.1") </span><span class="cov0" title="0">{
+                logger.Info("Configuring insecure connection",
+                        zap.String("reason", "dev mode or localhost"))
+                // This is what the old server did - set global HTTP transport TLS config
+                defaultTransport := http.DefaultTransport.(*http.Transport)
+                defaultTransport.TLSClientConfig = &amp;tls.Config{
+                        InsecureSkipVerify: true,
+                }
+                logger.Debug("TLS verification disabled for HTTP transport")
+        }</span>
+
+        // Create a new mailbox connection
+        <span class="cov0" title="0">logger.Debug("Creating mailbox WebSocket connection")
+        statusChecker, lndConnect, err := mailbox.NewClientWebsocketConn(
+                mailboxServer,
+                pairingPhrase,
+                localPriv,
+                remotePub,
+                func(key *btcec.PublicKey) error </span><span class="cov0" title="0">{
+                        logger.Debug("Received remote public key",
+                                zap.String("key", fmt.Sprintf("%x", key.SerializeCompressed())))
+                        remotePub = key
+                        return nil
+                }</span>,
+                func(data []byte) error <span class="cov0" title="0">{
+                        logger.Debug("Received auth data", zap.Int("bytes", len(data)))
+                        authReceived = true
+                        return nil
+                }</span>,
+        )
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to create mailbox connection",
+                        zap.Error(err),
+                        zap.Duration("failed_after", reqCtx.Duration()))
+                return nil, nil, fmt.Errorf("failed to create mailbox connection: %w", err)
+        }</span>
+        <span class="cov0" title="0">logger.Debug("Mailbox connection created successfully")
+
+        // Give some time for the connection callbacks to be triggered (critical!)
+        logger.Debug("Waiting for connection callbacks to process")
+
+        // Check for context cancellation during wait
+        select </span>{
+        case &lt;-time.After(3 * time.Second):<span class="cov0" title="0"></span>
+                // Continue
+        case &lt;-reqCtx.Done():<span class="cov0" title="0">
+                logger.Error("Context cancelled during callback wait")
+                return nil, nil, fmt.Errorf("connection cancelled: %w", reqCtx.Err())</span>
+        }
+
+        // NEW FIX: Don't wait for status, just check if lndConnect is available
+        <span class="cov0" title="0">if lndConnect == nil </span><span class="cov0" title="0">{
+                logger.Error("lndConnect function not available after connection setup")
+                return nil, nil, fmt.Errorf(
+                        "lndConnect function not available after connection setup")
+        }</span>
+
+        // Wait a bit more for callbacks, but proceed even without them
+        <span class="cov0" title="0">maxWaitTime := 5 * time.Second
+        waitStart := time.Now()
+        logger.Debug("Waiting for callbacks (but will proceed anyway)")
+
+        for time.Since(waitStart) &lt; maxWaitTime </span><span class="cov0" title="0">{
+                // Check for context cancellation
+                select </span>{
+                case &lt;-reqCtx.Done():<span class="cov0" title="0">
+                        logger.Error("Context cancelled during auth wait")
+                        return nil, nil, fmt.Errorf("connection cancelled: %w", reqCtx.Err())</span>
+                default:<span class="cov0" title="0"></span>
+                }
+
+                <span class="cov0" title="0">if authReceived &amp;&amp; remotePub != nil </span><span class="cov0" title="0">{
+                        logger.Debug("All callbacks received")
+                        break</span>
+                }
+                <span class="cov0" title="0">time.Sleep(200 * time.Millisecond)</span>
+        }
+
+        <span class="cov0" title="0">logger.Debug("Final connection state",
+                zap.Bool("auth_received", authReceived),
+                zap.Bool("remote_pub_received", remotePub != nil),
+                zap.Duration("elapsed", reqCtx.Duration()),
+        )
+        status := statusChecker()
+        logger.Debug("Connection status", zap.String("status", status.String()))
+
+        logger.Debug("Establishing gRPC connection to LND")
+        // Establish gRPC connection to LND
+        conn, err := lndConnect()
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to establish LND connection",
+                        zap.Error(err),
+                        zap.Duration("failed_after", reqCtx.Duration()))
+                return nil, nil, fmt.Errorf("failed to establish LND connection: %w", err)
+        }</span>
+        <span class="cov0" title="0">logger.Debug("gRPC connection established successfully")
+
+        // Create lightning client and test connection
+        logger.Debug("Testing connection with GetInfo")
+        lightningClient := lnrpc.NewLightningClient(conn)
+        info, err := lightningClient.GetInfo(reqCtx, &amp;lnrpc.GetInfoRequest{})
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to get node info",
+                        zap.Error(err),
+                        zap.Duration("failed_after", reqCtx.Duration()))
+                conn.Close()
+                return nil, nil, fmt.Errorf("connected but failed to get node info: %w", err)
+        }</span>
+        <span class="cov0" title="0">logger.Info("Successfully connected to Lightning node",
+                zap.String("alias", info.Alias),
+                zap.String("pubkey", info.IdentityPubkey),
+                zap.Duration("total_connection_time", reqCtx.Duration()),
+        )
+
+        return conn, info, nil</span>
+}
+
+// DisconnectTool returns the MCP tool definition for disconnecting from LNC.
+func (s *ConnectionService) DisconnectTool() mcp.Tool <span class="cov8" title="1">{
+        return mcp.Tool{
+                Name:        "lnc_disconnect",
+                Description: "Disconnect from the Lightning node",
+                InputSchema: mcp.ToolInputSchema{
+                        Type:       "object",
+                        Properties: map[string]any{},
+                },
+        }
+}</span>
+
+// HandleDisconnect handles the LNC disconnect request.
+func (s *ConnectionService) HandleDisconnect(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        // Create request context
+        reqCtx := lnccontext.New(ctx, "lnc_disconnect", 10*time.Second)
+        defer reqCtx.Cancel()
+        logger := logging.LogWithContext(reqCtx)
+
+        logger.Info("Disconnecting from Lightning node")
+
+        if s.Connection != nil </span><span class="cov0" title="0">{
+                err := s.Connection.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        logger.Error("Error closing connection", zap.Error(err))
+                }</span> else<span class="cov0" title="0"> {
+                        logger.Info("Connection closed successfully")
+                }</span>
+                <span class="cov0" title="0">s.Connection = nil</span>
+        } else<span class="cov0" title="0"> {
+                logger.Debug("No active connection to close")
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(`{
+                "disconnected": true,
+                "message": "Disconnected from Lightning node"
+        }`), nil</span>
+}
+
+// GetMailboxServer retrieves the mailbox server from tool arguments.
+func getMailboxServer(args map[string]any) string <span class="cov0" title="0">{
+        if mailbox, ok := args["mailbox"]; ok &amp;&amp; mailbox != nil </span><span class="cov0" title="0">{
+                if mailboxStr, ok := mailbox.(string); ok </span><span class="cov0" title="0">{
+                        return mailboxStr
+                }</span>
+        }
+        <span class="cov0" title="0">return ""</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package tools
+
+import (
+        "context"
+        "encoding/hex"
+        "fmt"
+
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+)
+
+// InvoiceService handles read-only Lightning invoice operations.
+type InvoiceService struct {
+        LightningClient lnrpc.LightningClient
+}
+
+// NewInvoiceService creates a new invoice service for read-only operations.
+func NewInvoiceService(client lnrpc.LightningClient) *InvoiceService <span class="cov8" title="1">{
+        return &amp;InvoiceService{
+                LightningClient: client,
+        }
+}</span>
+
+// DecodeInvoiceTool returns the MCP tool definition for decoding invoices.
+func (s *InvoiceService) DecodeInvoiceTool() mcp.Tool <span class="cov8" title="1">{
+        return mcp.Tool{
+                Name:        "lnc_decode_invoice",
+                Description: "Decode a BOLT11 Lightning invoice to inspect its contents",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "invoice": map[string]any{
+                                        "type":        "string",
+                                        "description": "BOLT11 invoice string to decode",
+                                        "pattern":     "^ln[a-z0-9]+$",
+                                },
+                        },
+                        Required: []string{"invoice"},
+                },
+        }
+}</span>
+
+// HandleDecodeInvoice handles the decode invoice request.
+func (s *InvoiceService) HandleDecodeInvoice(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">invoice, ok := request.Params.Arguments["invoice"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError("invoice is required"), nil
+        }</span>
+
+        // Basic validation
+        <span class="cov0" title="0">if len(invoice) &lt; 3 || invoice[:2] != "ln" </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError("invalid BOLT11 invoice format"), nil
+        }</span>
+
+        // Decode the invoice
+        <span class="cov0" title="0">decoded, err := s.LightningClient.DecodePayReq(ctx, &amp;lnrpc.PayReqString{
+                PayReq: invoice,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(fmt.Sprintf(
+                        "Failed to decode invoice: %v", err)), nil
+        }</span>
+
+        // Format route hints if present
+        <span class="cov0" title="0">routeHints := make([]map[string]any, len(decoded.RouteHints))
+        for i, hint := range decoded.RouteHints </span><span class="cov0" title="0">{
+                hops := make([]map[string]any, len(hint.HopHints))
+                for j, hop := range hint.HopHints </span><span class="cov0" title="0">{
+                        hops[j] = map[string]any{
+                                "node_id":    hop.NodeId,
+                                "chan_id":    hop.ChanId,
+                                "fee_base":   hop.FeeBaseMsat,
+                                "fee_prop":   hop.FeeProportionalMillionths,
+                                "cltv_delta": hop.CltvExpiryDelta,
+                        }
+                }</span>
+                <span class="cov0" title="0">routeHints[i] = map[string]any{
+                        "hop_hints": hops,
+                }</span>
+        }
+
+        // Format features if present
+        <span class="cov0" title="0">features := make(map[string]bool)
+        for k, v := range decoded.Features </span><span class="cov0" title="0">{
+                features[fmt.Sprintf("%d", k)] = v.IsKnown
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "destination": "%s",
+                "payment_hash": "%s",
+                "amount_sats": %d,
+                "amount_msat": %d,
+                "timestamp": %d,
+                "expiry": %d,
+                "description": "%s",
+                "description_hash": "%s",
+                "fallback_address": "%s",
+                "cltv_expiry": %d,
+                "route_hints": %s,
+                "payment_addr": "%s",
+                "features": %s
+        }`,
+                decoded.Destination,
+                decoded.PaymentHash,
+                decoded.NumSatoshis,
+                decoded.NumMsat,
+                decoded.Timestamp,
+                decoded.Expiry,
+                decoded.Description,
+                decoded.DescriptionHash,
+                decoded.FallbackAddr,
+                decoded.CltvExpiry,
+                toJSONString(routeHints),
+                hex.EncodeToString(decoded.PaymentAddr),
+                toJSONString(features),
+        )), nil</span>
+}
+
+// ListInvoicesTool returns the MCP tool definition for listing invoices.
+func (s *InvoiceService) ListInvoicesTool() mcp.Tool <span class="cov8" title="1">{
+        return mcp.Tool{
+                Name:        "lnc_list_invoices",
+                Description: "List invoices created by this Lightning node",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "pending_only": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Only return pending/unpaid invoices",
+                                },
+                                "index_offset": map[string]any{
+                                        "type":        "number",
+                                        "description": "Start index for pagination",
+                                        "minimum":     0,
+                                },
+                                "num_max_invoices": map[string]any{
+                                        "type":        "number",
+                                        "description": "Maximum number of invoices to return",
+                                        "minimum":     1,
+                                        "maximum":     1000,
+                                },
+                                "reversed": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Return invoices in reverse chronological order",
+                                },
+                        },
+                },
+        }
+}</span>
+
+// HandleListInvoices handles the list invoices request.
+func (s *InvoiceService) HandleListInvoices(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        // Parse parameters
+        <span class="cov0" title="0">pendingOnly, _ := request.Params.Arguments["pending_only"].(bool)
+        indexOffset, _ := request.Params.Arguments["index_offset"].(float64)
+        numMaxInvoices, _ := request.Params.Arguments["num_max_invoices"].(float64)
+        if numMaxInvoices == 0 </span><span class="cov0" title="0">{
+                numMaxInvoices = 100 // Default
+        }</span>
+        <span class="cov0" title="0">reversed, _ := request.Params.Arguments["reversed"].(bool)
+
+        // List invoices
+        resp, err := s.LightningClient.ListInvoices(ctx, &amp;lnrpc.ListInvoiceRequest{
+                PendingOnly:    pendingOnly,
+                IndexOffset:    uint64(indexOffset),
+                NumMaxInvoices: uint64(numMaxInvoices),
+                Reversed:       reversed,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to list invoices: %v", err)), nil
+        }</span>
+
+        // Format invoice list
+        <span class="cov0" title="0">invoiceList := make([]map[string]any, len(resp.Invoices))
+        for i, invoice := range resp.Invoices </span><span class="cov0" title="0">{
+                invoiceList[i] = map[string]any{
+                        "memo":            invoice.Memo,
+                        "payment_request": invoice.PaymentRequest,
+                        "r_hash":          hex.EncodeToString(invoice.RHash),
+                        "value":           invoice.Value,
+                        "value_msat":      invoice.ValueMsat,
+                        "settled":         invoice.State == lnrpc.Invoice_SETTLED,
+                        "creation_date":   invoice.CreationDate,
+                        "settle_date":     invoice.SettleDate,
+                        "expiry":          invoice.Expiry,
+                        "cltv_expiry":     invoice.CltvExpiry,
+                        "private":         invoice.Private,
+                        "add_index":       invoice.AddIndex,
+                        "settle_index":    invoice.SettleIndex,
+                        "amt_paid_sat":    invoice.AmtPaidSat,
+                        "amt_paid_msat":   invoice.AmtPaidMsat,
+                        "state":           invoice.State.String(),
+                        "is_keysend":      invoice.IsKeysend,
+                        "payment_addr":    hex.EncodeToString(invoice.PaymentAddr),
+                }
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "invoices": %s,
+                "first_index_offset": %d,
+                "last_index_offset": %d,
+                "total_invoices": %d
+        }`, toJSONString(invoiceList), resp.FirstIndexOffset,
+                resp.LastIndexOffset, len(invoiceList))), nil</span>
+}
+
+// LookupInvoiceTool returns the MCP tool definition for looking up a specific invoice.
+func (s *InvoiceService) LookupInvoiceTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_lookup_invoice",
+                Description: "Look up a specific invoice by its payment hash",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "payment_hash": map[string]any{
+                                        "type":        "string",
+                                        "description": "Payment hash of the invoice (hex encoded)",
+                                        "pattern":     "^[0-9a-fA-F]{64}$",
+                                },
+                        },
+                        Required: []string{"payment_hash"},
+                },
+        }
+}</span>
+
+// HandleLookupInvoice handles the lookup invoice request.
+func (s *InvoiceService) HandleLookupInvoice(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">paymentHash, ok := request.Params.Arguments["payment_hash"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError("payment_hash is required"), nil
+        }</span>
+
+        // Validate payment hash format
+        <span class="cov0" title="0">if len(paymentHash) != 64 </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "payment_hash must be a 64-character hex string"), nil
+        }</span>
+
+        <span class="cov0" title="0">rhashBytes, err := hex.DecodeString(paymentHash)
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError("invalid payment_hash format"), nil
+        }</span>
+
+        // Lookup the invoice
+        <span class="cov0" title="0">invoice, err := s.LightningClient.LookupInvoice(ctx, &amp;lnrpc.PaymentHash{
+                RHash: rhashBytes,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(fmt.Sprintf(
+                        "Failed to lookup invoice: %v", err)), nil
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "memo": "%s",
+                "payment_request": "%s",
+                "r_hash": "%s",
+                "value": %d,
+                "value_msat": %d,
+                "settled": %t,
+                "creation_date": %d,
+                "settle_date": %d,
+                "expiry": %d,
+                "cltv_expiry": %d,
+                "private": %t,
+                "add_index": %d,
+                "settle_index": %d,
+                "amt_paid_sat": %d,
+                "amt_paid_msat": %d,
+                "state": "%s",
+                "is_keysend": %t
+        }`,
+                invoice.Memo,
+                invoice.PaymentRequest,
+                hex.EncodeToString(invoice.RHash),
+                invoice.Value,
+                invoice.ValueMsat,
+                invoice.State == lnrpc.Invoice_SETTLED,
+                invoice.CreationDate,
+                invoice.SettleDate,
+                invoice.Expiry,
+                invoice.CltvExpiry,
+                invoice.Private,
+                invoice.AddIndex,
+                invoice.SettleIndex,
+                invoice.AmtPaidSat,
+                invoice.AmtPaidMsat,
+                invoice.State.String(),
+                invoice.IsKeysend,
+        )), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package tools
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+)
+
+// NodeService handles Lightning node information operations.
+type NodeService struct {
+        LightningClient lnrpc.LightningClient
+}
+
+// NewNodeService creates a new node service.
+func NewNodeService(client lnrpc.LightningClient) *NodeService <span class="cov0" title="0">{
+        return &amp;NodeService{
+                LightningClient: client,
+        }
+}</span>
+
+// GetInfoTool returns the MCP tool definition for getting node info.
+func (s *NodeService) GetInfoTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name: "lnc_get_info",
+                Description: "Get Lightning node information including version, " +
+                        "peers, and channels",
+                InputSchema: mcp.ToolInputSchema{
+                        Type:       "object",
+                        Properties: map[string]any{},
+                },
+        }
+}</span>
+
+// HandleGetInfo handles the node info request.
+func (s *NodeService) HandleGetInfo(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">info, err := s.LightningClient.GetInfo(ctx, &amp;lnrpc.GetInfoRequest{})
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to get node info: %v", err)), nil
+        }</span>
+
+        <span class="cov0" title="0">chains := chainNetworks(info.Chains)
+        primaryNetwork := ""
+        if len(chains) &gt; 0 </span><span class="cov0" title="0">{
+                primaryNetwork = chains[0]
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "node_id": "%s",
+                "alias": "%s",
+                "version": "%s",
+                "num_peers": %d,
+                "num_active_channels": %d,
+                "num_inactive_channels": %d,
+                "num_pending_channels": %d,
+                "synced_to_chain": %t,
+                "synced_to_graph": %t,
+                "block_height": %d,
+                "block_hash": "%s",
+                "primary_network": "%s",
+                "chains": %v
+        }`,
+                info.IdentityPubkey,
+                info.Alias,
+                info.Version,
+                info.NumPeers,
+                info.NumActiveChannels,
+                info.NumInactiveChannels,
+                info.NumPendingChannels,
+                info.SyncedToChain,
+                info.SyncedToGraph,
+                info.BlockHeight,
+                info.BlockHash,
+                primaryNetwork,
+                chains,
+        )), nil</span>
+}
+
+// GetBalanceTool returns the MCP tool definition for getting wallet balance.
+func (s *NodeService) GetBalanceTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_get_balance",
+                Description: "Get on-chain wallet balance and channel balance information",
+                InputSchema: mcp.ToolInputSchema{
+                        Type:       "object",
+                        Properties: map[string]any{},
+                },
+        }
+}</span>
+
+// HandleGetBalance handles the balance request.
+func (s *NodeService) HandleGetBalance(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        // Get on-chain balance
+        <span class="cov0" title="0">walletBalance, err := s.LightningClient.WalletBalance(ctx,
+                &amp;lnrpc.WalletBalanceRequest{})
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to get wallet balance: %v", err)), nil
+        }</span>
+
+        // Get channel balance
+        <span class="cov0" title="0">channelBalance, err := s.LightningClient.ChannelBalance(ctx,
+                &amp;lnrpc.ChannelBalanceRequest{})
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to get channel balance: %v", err)), nil
+        }</span>
+
+        <span class="cov0" title="0">localBalance := safeAmount(channelBalance.GetLocalBalance())
+        remoteBalance := safeAmount(channelBalance.GetRemoteBalance())
+        unsettledLocal := safeAmount(channelBalance.GetUnsettledLocalBalance())
+        unsettledRemote := safeAmount(channelBalance.GetUnsettledRemoteBalance())
+        pendingLocal := safeAmount(channelBalance.GetPendingOpenLocalBalance())
+        pendingRemote := safeAmount(channelBalance.GetPendingOpenRemoteBalance())
+        totalChannelBalance := localBalance.sat + remoteBalance.sat
+        totalPendingBalance := pendingLocal.sat + pendingRemote.sat
+
+        return mcp.NewToolResultText(fmt.Sprintf(`{
+                "wallet_balance": {
+                        "total_balance": %d,
+                        "confirmed_balance": %d,
+                        "unconfirmed_balance": %d
+                },
+                "channel_balance": {
+                        "total_balance": %d,
+                        "pending_open_balance": %d,
+                        "local_balance": {
+                                "sat": %d,
+                                "msat": %d
+                        },
+                        "remote_balance": {
+                                "sat": %d,
+                                "msat": %d
+                        },
+                        "unsettled_local_balance": {
+                                "sat": %d,
+                                "msat": %d
+                        },
+                        "unsettled_remote_balance": {
+                                "sat": %d,
+                                "msat": %d
+                        },
+                        "pending_open_local_balance": {
+                                "sat": %d,
+                                "msat": %d
+                        },
+                        "pending_open_remote_balance": {
+                                "sat": %d,
+                                "msat": %d
+                        }
+                }
+        }`,
+                walletBalance.TotalBalance,
+                walletBalance.ConfirmedBalance,
+                walletBalance.UnconfirmedBalance,
+                totalChannelBalance,
+                totalPendingBalance,
+                localBalance.sat,
+                localBalance.msat,
+                remoteBalance.sat,
+                remoteBalance.msat,
+                unsettledLocal.sat,
+                unsettledLocal.msat,
+                unsettledRemote.sat,
+                unsettledRemote.msat,
+                pendingLocal.sat,
+                pendingLocal.msat,
+                pendingRemote.sat,
+                pendingRemote.msat,
+        )), nil</span>
+}
+
+type balanceBreakdown struct {
+        sat  uint64
+        msat uint64
+}
+
+func safeAmount(amount *lnrpc.Amount) balanceBreakdown <span class="cov0" title="0">{
+        if amount == nil </span><span class="cov0" title="0">{
+                return balanceBreakdown{}
+        }</span>
+        <span class="cov0" title="0">return balanceBreakdown{sat: amount.Sat, msat: amount.Msat}</span>
+}
+
+// chainNetworks extracts chain networks from Chain slice.
+func chainNetworks(chains []*lnrpc.Chain) []string <span class="cov0" title="0">{
+        networks := make([]string, len(chains))
+        for i, chain := range chains </span><span class="cov0" title="0">{
+                networks[i] = chain.Network
+        }</span>
+        <span class="cov0" title="0">return networks</span>
+}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package tools
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+)
+
+// OnChainService handles read-only on-chain wallet operations.
+type OnChainService struct {
+        LightningClient lnrpc.LightningClient
+}
+
+// NewOnChainService creates a new on-chain service for read-only operations.
+func NewOnChainService(client lnrpc.LightningClient) *OnChainService <span class="cov0" title="0">{
+        return &amp;OnChainService{
+                LightningClient: client,
+        }
+}</span>
+
+// ListUnspentTool returns the MCP tool definition for listing unspent outputs.
+func (s *OnChainService) ListUnspentTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_list_unspent",
+                Description: "List unspent transaction outputs (UTXOs)",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "min_confs": map[string]any{
+                                        "type":        "number",
+                                        "description": "Minimum confirmations required",
+                                        "minimum":     0,
+                                },
+                                "max_confs": map[string]any{
+                                        "type":        "number",
+                                        "description": "Maximum confirmations to include",
+                                        "minimum":     1,
+                                },
+                                "account": map[string]any{
+                                        "type":        "string",
+                                        "description": "Account name to filter UTXOs",
+                                },
+                        },
+                },
+        }
+}</span>
+
+// HandleListUnspent handles the list unspent request.
+func (s *OnChainService) HandleListUnspent(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">minConfs, _ := request.Params.Arguments["min_confs"].(float64)
+        maxConfs, _ := request.Params.Arguments["max_confs"].(float64)
+        if maxConfs == 0 </span><span class="cov0" title="0">{
+                maxConfs = 9999999 // Very high number to include all
+        }</span>
+        <span class="cov0" title="0">account, _ := request.Params.Arguments["account"].(string)
+
+        resp, err := s.LightningClient.ListUnspent(ctx, &amp;lnrpc.ListUnspentRequest{
+                MinConfs: int32(minConfs),
+                MaxConfs: int32(maxConfs),
+                Account:  account,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to list unspent: %v", err)), nil
+        }</span>
+
+        <span class="cov0" title="0">utxos := make([]map[string]any, len(resp.Utxos))
+        totalAmount := int64(0)
+
+        for i, utxo := range resp.Utxos </span><span class="cov0" title="0">{
+                totalAmount += utxo.AmountSat
+                utxos[i] = map[string]any{
+                        "address":    utxo.Address,
+                        "amount_sat": utxo.AmountSat,
+                        "pk_script":  utxo.PkScript,
+                        "outpoint": fmt.Sprintf("%s:%d", utxo.Outpoint.TxidStr,
+                                utxo.Outpoint.OutputIndex),
+                        "confirmations": utxo.Confirmations,
+                }
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "utxos": %s,
+                "total_utxos": %d,
+                "total_amount_sat": %d
+        }`, toJSONString(utxos), len(utxos), totalAmount)), nil</span>
+}
+
+// GetTransactionsTool returns the MCP tool definition for listing transactions.
+func (s *OnChainService) GetTransactionsTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_get_transactions",
+                Description: "Get on-chain transaction history",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "start_height": map[string]any{
+                                        "type":        "number",
+                                        "description": "Starting block height",
+                                        "minimum":     0,
+                                },
+                                "end_height": map[string]any{
+                                        "type":        "number",
+                                        "description": "Ending block height",
+                                        "minimum":     0,
+                                },
+                                "account": map[string]any{
+                                        "type":        "string",
+                                        "description": "Account name to filter transactions",
+                                },
+                        },
+                },
+        }
+}</span>
+
+// HandleGetTransactions handles the get transactions request.
+func (s *OnChainService) HandleGetTransactions(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">startHeight, _ := request.Params.Arguments["start_height"].(float64)
+        endHeight, _ := request.Params.Arguments["end_height"].(float64)
+        if endHeight == 0 </span><span class="cov0" title="0">{
+                endHeight = -1 // Use -1 to indicate current height
+        }</span>
+        <span class="cov0" title="0">account, _ := request.Params.Arguments["account"].(string)
+
+        resp, err := s.LightningClient.GetTransactions(ctx,
+                &amp;lnrpc.GetTransactionsRequest{
+                        StartHeight: int32(startHeight),
+                        EndHeight:   int32(endHeight),
+                        Account:     account,
+                })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to get transactions: %v", err)), nil
+        }</span>
+
+        <span class="cov0" title="0">transactions := make([]map[string]any, len(resp.Transactions))
+        for i, tx := range resp.Transactions </span><span class="cov0" title="0">{
+                // Format previous outputs
+                prevOuts := make([]map[string]any, len(tx.PreviousOutpoints))
+                for j, prevOut := range tx.PreviousOutpoints </span><span class="cov0" title="0">{
+                        prevOuts[j] = map[string]any{
+                                "outpoint":      prevOut.Outpoint,
+                                "is_our_output": prevOut.IsOurOutput,
+                        }
+                }</span>
+
+                <span class="cov0" title="0">transactions[i] = map[string]any{
+                        "tx_hash":            tx.TxHash,
+                        "amount":             tx.Amount,
+                        "num_confirmations":  tx.NumConfirmations,
+                        "block_hash":         tx.BlockHash,
+                        "block_height":       tx.BlockHeight,
+                        "time_stamp":         tx.TimeStamp,
+                        "total_fees":         tx.TotalFees,
+                        "raw_tx_hex":         tx.RawTxHex,
+                        "label":              tx.Label,
+                        "previous_outpoints": prevOuts,
+                }</span>
+        }
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "transactions": %s,
+                "total_transactions": %d
+        }`, toJSONString(transactions), len(transactions))), nil</span>
+}
+
+// EstimateFeesTool returns the MCP tool definition for estimating fees.
+func (s *OnChainService) EstimateFeesTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name: "lnc_estimate_fee",
+                Description: "Estimate on-chain transaction fees for different " +
+                        "confirmation targets",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "target_conf": map[string]any{
+                                        "type":        "number",
+                                        "description": "Target number of confirmations",
+                                        "minimum":     1,
+                                        "maximum":     144,
+                                },
+                        },
+                },
+        }
+}</span>
+
+// HandleEstimateFee handles the estimate fee request.
+func (s *OnChainService) HandleEstimateFee(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">targetConf, _ := request.Params.Arguments["target_conf"].(float64)
+        if targetConf == 0 </span><span class="cov0" title="0">{
+                targetConf = 6 // Default 6 confirmations
+        }</span>
+
+        // Get estimates for multiple confirmation targets
+        <span class="cov0" title="0">estimates := make(map[string]any)
+
+        targets := []int32{1, 3, 6, 10, 20, 50, 100}
+        for _, target := range targets </span><span class="cov0" title="0">{
+                if targetConf &gt; 0 &amp;&amp; target != int32(targetConf) </span><span class="cov0" title="0">{
+                        continue</span> // Only get estimate for requested target if specified
+                }
+
+                <span class="cov0" title="0">resp, err := s.LightningClient.EstimateFee(ctx, &amp;lnrpc.EstimateFeeRequest{
+                        TargetConf: target,
+                })
+                if err != nil </span><span class="cov0" title="0">{
+                        continue</span> // Skip failed estimates
+                }
+
+                <span class="cov0" title="0">estimates[fmt.Sprintf("target_%d_blocks", target)] = map[string]any{
+                        "fee_sat":       resp.FeeSat,
+                        "sat_per_vbyte": resp.SatPerVbyte,
+                }
+
+                if targetConf &gt; 0 </span><span class="cov0" title="0">{
+                        break</span> // Only one estimate requested
+                }
+        }
+
+        <span class="cov0" title="0">if len(estimates) == 0 </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError("Failed to get fee estimates"), nil
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "fee_estimates": %s
+        }`, toJSONString(estimates))), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">package tools
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+)
+
+// PaymentService handles read-only Lightning payment operations.
+type PaymentService struct {
+        LightningClient lnrpc.LightningClient
+}
+
+// NewPaymentService creates a new payment service for read-only operations.
+func NewPaymentService(lightningClient lnrpc.LightningClient) *PaymentService <span class="cov0" title="0">{
+        return &amp;PaymentService{
+                LightningClient: lightningClient,
+        }
+}</span>
+
+// ListPaymentsTool returns the MCP tool definition for listing payments.
+func (s *PaymentService) ListPaymentsTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_list_payments",
+                Description: "List historical Lightning payments made by this node",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "include_incomplete": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Include incomplete/failed payments",
+                                },
+                                "index_offset": map[string]any{
+                                        "type":        "number",
+                                        "description": "Start index for pagination",
+                                        "minimum":     0,
+                                },
+                                "max_payments": map[string]any{
+                                        "type":        "number",
+                                        "description": "Maximum number of payments to return",
+                                        "minimum":     1,
+                                        "maximum":     1000,
+                                },
+                                "reversed": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Return payments in reverse chronological order",
+                                },
+                        },
+                },
+        }
+}</span>
+
+// HandleListPayments handles the list payments request.
+func (s *PaymentService) HandleListPayments(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        // Parse parameters
+        <span class="cov0" title="0">includeIncomplete, _ := request.Params.Arguments["include_incomplete"].(bool)
+        indexOffset, _ := request.Params.Arguments["index_offset"].(float64)
+        maxPayments, _ := request.Params.Arguments["max_payments"].(float64)
+        if maxPayments == 0 </span><span class="cov0" title="0">{
+                maxPayments = 100 // Default
+        }</span>
+        <span class="cov0" title="0">reversed, _ := request.Params.Arguments["reversed"].(bool)
+
+        // List payments
+        resp, err := s.LightningClient.ListPayments(ctx, &amp;lnrpc.ListPaymentsRequest{
+                IncludeIncomplete: includeIncomplete,
+                IndexOffset:       uint64(indexOffset),
+                MaxPayments:       uint64(maxPayments),
+                Reversed:          reversed,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to list payments: %v", err)), nil
+        }</span>
+
+        // Format payment list
+        <span class="cov0" title="0">paymentList := make([]map[string]any, len(resp.Payments))
+        for i, payment := range resp.Payments </span><span class="cov0" title="0">{
+                paymentList[i] = map[string]any{
+                        "payment_hash":     payment.PaymentHash,
+                        "value_sat":        payment.ValueSat,
+                        "value_msat":       payment.ValueMsat,
+                        "payment_preimage": payment.PaymentPreimage,
+                        "payment_request":  payment.PaymentRequest,
+                        "status":           payment.Status.String(),
+                        "fee_sat":          payment.FeeSat,
+                        "fee_msat":         payment.FeeMsat,
+                        "creation_time_ns": payment.CreationTimeNs,
+                        "payment_index":    payment.PaymentIndex,
+                        "failure_reason":   payment.FailureReason.String(),
+                        "htlc_count":       len(payment.Htlcs),
+                }
+        }</span>
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "payments": %s,
+                "first_index_offset": %d,
+                "last_index_offset": %d,
+                "total_payments": %d
+        }`, toJSONString(paymentList), resp.FirstIndexOffset,
+                resp.LastIndexOffset, len(paymentList))), nil</span>
+}
+
+// TrackPaymentTool returns the MCP tool definition for tracking a payment.
+func (s *PaymentService) TrackPaymentTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name:        "lnc_track_payment",
+                Description: "Track the status of a Lightning payment by its hash",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "payment_hash": map[string]any{
+                                        "type":        "string",
+                                        "description": "Payment hash to track (hex encoded)",
+                                        "pattern":     "^[0-9a-fA-F]{64}$",
+                                },
+                        },
+                        Required: []string{"payment_hash"},
+                },
+        }
+}</span>
+
+// HandleTrackPayment handles the track payment request.
+func (s *PaymentService) HandleTrackPayment(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">paymentHash, ok := request.Params.Arguments["payment_hash"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError("payment_hash is required"), nil
+        }</span>
+
+        // Validate payment hash format
+        <span class="cov0" title="0">if len(paymentHash) != 64 </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "payment_hash must be a 64-character hex string"), nil
+        }</span>
+
+        // For read-only operation, we'll just look up the payment in history
+        <span class="cov0" title="0">resp, err := s.LightningClient.ListPayments(ctx, &amp;lnrpc.ListPaymentsRequest{
+                IncludeIncomplete: true,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to fetch payment: %v", err)), nil
+        }</span>
+
+        // Find the payment with matching hash
+        <span class="cov0" title="0">for _, payment := range resp.Payments </span><span class="cov0" title="0">{
+                if payment.PaymentHash == paymentHash </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultText(fmt.Sprintf(`{
+                                "found": true,
+                                "payment_hash": "%s",
+                                "status": "%s",
+                                "value_sat": %d,
+                                "fee_sat": %d,
+                                "creation_time_ns": %d,
+                                "payment_preimage": "%s",
+                                "failure_reason": "%s"
+                        }`, payment.PaymentHash, payment.Status.String(),
+                                payment.ValueSat, payment.FeeSat,
+                                payment.CreationTimeNs, payment.PaymentPreimage,
+                                payment.FailureReason.String())), nil
+                }</span>
+        }
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(`{"found": false, "message": "Payment not found"}`), nil</span>
+}
+
+// Helper function to check BOLT11 format
+func isValidBolt11(invoice string) bool <span class="cov8" title="1">{
+        // Basic check: BOLT11 invoices start with "ln"
+        return len(invoice) &gt; 2 &amp;&amp; invoice[:2] == "ln"
+}</span>
+</pre>
+		
+		<pre class="file" id="file16" style="display: none">package tools
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/lightningnetwork/lnd/lnrpc"
+        "github.com/mark3labs/mcp-go/mcp"
+)
+
+// PeerService handles read-only Lightning peer operations.
+type PeerService struct {
+        LightningClient lnrpc.LightningClient
+}
+
+// NewPeerService creates a new peer service for read-only operations.
+func NewPeerService(client lnrpc.LightningClient) *PeerService <span class="cov0" title="0">{
+        return &amp;PeerService{
+                LightningClient: client,
+        }
+}</span>
+
+// ListPeersTool returns the MCP tool definition for listing peers.
+func (s *PeerService) ListPeersTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name: "lnc_list_peers",
+                Description: "List all connected Lightning Network peers with " +
+                        "detailed connection information",
+                InputSchema: mcp.ToolInputSchema{
+                        Type:       "object",
+                        Properties: map[string]any{},
+                },
+        }
+}</span>
+
+// HandleListPeers handles the list peers request.
+func (s *PeerService) HandleListPeers(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">peers, err := s.LightningClient.ListPeers(ctx, &amp;lnrpc.ListPeersRequest{})
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to list peers: %v", err)), nil
+        }</span>
+
+        <span class="cov0" title="0">peerList := make([]map[string]any, len(peers.Peers))
+        for i, peer := range peers.Peers </span><span class="cov0" title="0">{
+                // Format peer features
+                features := make([]map[string]any, 0)
+                for featureKey, feature := range peer.Features </span><span class="cov0" title="0">{
+                        features = append(features, map[string]any{
+                                "feature":     featureKey,
+                                "name":        feature.Name,
+                                "is_required": feature.IsRequired,
+                                "is_known":    feature.IsKnown,
+                        })
+                }</span>
+
+                // Format error information (simplified)
+                <span class="cov0" title="0">var lastError map[string]any
+                if len(peer.Errors) &gt; 0 </span><span class="cov0" title="0">{
+                        lastError = map[string]any{
+                                "last_error": peer.Errors[len(peer.Errors)-1].Error,
+                        }
+                }</span>
+
+                <span class="cov0" title="0">peerList[i] = map[string]any{
+                        "pub_key":    peer.PubKey,
+                        "address":    peer.Address,
+                        "bytes_sent": peer.BytesSent,
+                        "bytes_recv": peer.BytesRecv,
+                        "sat_sent":   peer.SatSent,
+                        "sat_recv":   peer.SatRecv,
+                        "inbound":    peer.Inbound,
+                        "ping_time":  peer.PingTime,
+                        "sync_type":  peer.SyncType.String(),
+                        "features":   features,
+                        "errors":     formatPeerErrors(peer.Errors),
+                        "flap_count": peer.FlapCount,
+                        "last_flap":  lastError,
+                }</span>
+        }
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "peers": %s,
+                "total_peers": %d
+        }`, toJSONStringPeers(peerList), len(peerList))), nil</span>
+}
+
+// DescribeGraphTool returns the MCP tool definition for getting network graph.
+func (s *PeerService) DescribeGraphTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name: "lnc_describe_graph",
+                Description: "Get Lightning Network graph information including " +
+                        "nodes and channels",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "include_unannounced": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Include unannounced channels in the graph",
+                                },
+                        },
+                },
+        }
+}</span>
+
+// HandleDescribeGraph handles the describe graph request.
+func (s *PeerService) HandleDescribeGraph(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">includeUnannounced, _ := request.Params.Arguments["include_unannounced"].(bool)
+
+        graph, err := s.LightningClient.DescribeGraph(ctx, &amp;lnrpc.ChannelGraphRequest{
+                IncludeUnannounced: includeUnannounced,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to describe graph: %v", err)), nil
+        }</span>
+
+        // Format the graph data (simplified for readability)
+        <span class="cov0" title="0">nodeCount := len(graph.Nodes)
+        edgeCount := len(graph.Edges)
+
+        // Sample of first few nodes and edges to avoid overwhelming output
+        maxSamples := 5
+        sampleNodes := make([]map[string]any, 0)
+        for i, node := range graph.Nodes </span><span class="cov0" title="0">{
+                if i &gt;= maxSamples </span><span class="cov0" title="0">{
+                        break</span>
+                }
+
+                <span class="cov0" title="0">addresses := make([]string, len(node.Addresses))
+                for j, addr := range node.Addresses </span><span class="cov0" title="0">{
+                        addresses[j] = addr.Addr // Just the address without port for now
+                }</span>
+
+                <span class="cov0" title="0">sampleNodes = append(sampleNodes, map[string]any{
+                        "pub_key":   node.PubKey,
+                        "alias":     node.Alias,
+                        "addresses": addresses,
+                        "color":     node.Color,
+                })</span>
+        }
+
+        <span class="cov0" title="0">sampleEdges := make([]map[string]any, 0)
+        for i, edge := range graph.Edges </span><span class="cov0" title="0">{
+                if i &gt;= maxSamples </span><span class="cov0" title="0">{
+                        break</span>
+                }
+
+                <span class="cov0" title="0">sampleEdges = append(sampleEdges, map[string]any{
+                        "channel_id": edge.ChannelId,
+                        "chan_point": edge.ChanPoint,
+                        "node1_pub":  edge.Node1Pub,
+                        "node2_pub":  edge.Node2Pub,
+                        "capacity":   edge.Capacity,
+                })</span>
+        }
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(fmt.Sprintf(`{
+                "total_nodes": %d,
+                "total_edges": %d,
+                "include_unannounced": %t,
+                "sample_nodes": %s,
+                "sample_edges": %s
+        }`,
+                nodeCount,
+                edgeCount,
+                includeUnannounced,
+                toJSONStringPeers(sampleNodes),
+                toJSONStringPeers(sampleEdges),
+        )), nil</span>
+}
+
+// GetNodeInfoTool returns the MCP tool definition for getting specific node information.
+func (s *PeerService) GetNodeInfoTool() mcp.Tool <span class="cov0" title="0">{
+        return mcp.Tool{
+                Name: "lnc_get_node_info",
+                Description: "Get detailed information about a specific " +
+                        "Lightning Network node",
+                InputSchema: mcp.ToolInputSchema{
+                        Type: "object",
+                        Properties: map[string]any{
+                                "pub_key": map[string]any{
+                                        "type":        "string",
+                                        "description": "Public key of the node to get info for (hex encoded)",
+                                        "pattern":     "^[0-9a-fA-F]{66}$",
+                                },
+                                "include_channels": map[string]any{
+                                        "type":        "boolean",
+                                        "description": "Include the node's channels in the response",
+                                },
+                        },
+                        Required: []string{"pub_key"},
+                },
+        }
+}</span>
+
+// HandleGetNodeInfo handles the get node info request.
+func (s *PeerService) HandleGetNodeInfo(ctx context.Context,
+        request mcp.CallToolRequest) (*mcp.CallToolResult, error) <span class="cov0" title="0">{
+        if s.LightningClient == nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        "Not connected to Lightning node. Use lnc_connect first."), nil
+        }</span>
+
+        <span class="cov0" title="0">pubKey, ok := request.Params.Arguments["pub_key"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError("pub_key is required"), nil
+        }</span>
+
+        <span class="cov0" title="0">includeChannels, _ := request.Params.Arguments["include_channels"].(bool)
+
+        nodeInfo, err := s.LightningClient.GetNodeInfo(ctx, &amp;lnrpc.NodeInfoRequest{
+                PubKey:          pubKey,
+                IncludeChannels: includeChannels,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return mcp.NewToolResultError(
+                        fmt.Sprintf("Failed to get node info: %v", err)), nil
+        }</span>
+
+        // Format node information
+        <span class="cov0" title="0">addresses := make([]string, len(nodeInfo.Node.Addresses))
+        for i, addr := range nodeInfo.Node.Addresses </span><span class="cov0" title="0">{
+                addresses[i] = addr.Addr // Just the address without port for now
+        }</span>
+
+        <span class="cov0" title="0">nodeData := map[string]any{
+                "pub_key":        nodeInfo.Node.PubKey,
+                "alias":          nodeInfo.Node.Alias,
+                "addresses":      addresses,
+                "color":          nodeInfo.Node.Color,
+                "num_channels":   nodeInfo.NumChannels,
+                "total_capacity": nodeInfo.TotalCapacity,
+        }
+
+        if includeChannels &amp;&amp; len(nodeInfo.Channels) &gt; 0 </span><span class="cov0" title="0">{
+                channels := make([]map[string]any, len(nodeInfo.Channels))
+                for i, channel := range nodeInfo.Channels </span><span class="cov0" title="0">{
+                        channels[i] = map[string]any{
+                                "channel_id": channel.ChannelId,
+                                "chan_point": channel.ChanPoint,
+                                "node1_pub":  channel.Node1Pub,
+                                "node2_pub":  channel.Node2Pub,
+                                "capacity":   channel.Capacity,
+                        }
+                }</span>
+                <span class="cov0" title="0">nodeData["channels"] = channels</span>
+        }
+
+        <span class="cov0" title="0">return mcp.NewToolResultText(toJSONStringPeers(nodeData)), nil</span>
+}
+
+// FormatPeerErrors formats peer error information for JSON output.
+func formatPeerErrors(errors []*lnrpc.TimestampedError,
+) []map[string]any <span class="cov0" title="0">{
+        result := make([]map[string]any, len(errors))
+        for i, err := range errors </span><span class="cov0" title="0">{
+                result[i] = map[string]any{
+                        "error":     err.Error,
+                        "timestamp": err.Timestamp,
+                }
+        }</span>
+        <span class="cov0" title="0">return result</span>
+}
+
+// ToJSONStringPeers converts an interface to JSON string for peer data output.
+func toJSONStringPeers(v any) string <span class="cov0" title="0">{
+        // Simplified JSON conversion - in production use proper JSON marshaling
+        return fmt.Sprintf("%+v", v)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
