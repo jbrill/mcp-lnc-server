@@ -11,6 +11,7 @@ import (
 // Test creating a new RequestContext.
 func TestNew(t *testing.T) {
 	ctx := New(context.Background(), "test_operation", 30*time.Second)
+	defer ctx.Cancel()
 
 	assert.NotNil(t, ctx)
 	assert.NotEmpty(t, ctx.RequestID())
@@ -25,6 +26,7 @@ func TestWithTraceID(t *testing.T) {
 	existingTraceID := "trace-123"
 	ctx := WithTraceID(context.Background(), existingTraceID,
 		"test_operation", 30*time.Second)
+	defer ctx.Cancel()
 
 	assert.NotNil(t, ctx)
 	assert.Equal(t, existingTraceID, ctx.TraceID())
@@ -35,6 +37,7 @@ func TestWithTraceID(t *testing.T) {
 // Test adding user information.
 func TestWithUser(t *testing.T) {
 	ctx := New(context.Background(), "test_operation", 30*time.Second)
+	defer ctx.Cancel()
 	ctx = ctx.WithUser("user-123", "session-456")
 
 	assert.Equal(t, "user-123", ctx.UserID())
@@ -44,6 +47,7 @@ func TestWithUser(t *testing.T) {
 // Test adding node information.
 func TestWithNode(t *testing.T) {
 	ctx := New(context.Background(), "test_operation", 30*time.Second)
+	defer ctx.Cancel()
 	ctx = ctx.WithNode("node-789")
 
 	assert.Equal(t, "node-789", ctx.NodeID())
@@ -52,6 +56,7 @@ func TestWithNode(t *testing.T) {
 // Test duration calculation.
 func TestDuration(t *testing.T) {
 	ctx := New(context.Background(), "test_operation", 30*time.Second)
+	defer ctx.Cancel()
 
 	// Wait a bit
 	time.Sleep(100 * time.Millisecond)
@@ -65,6 +70,7 @@ func TestDuration(t *testing.T) {
 func TestTimeoutAndExpiration(t *testing.T) {
 	// Create context with very short timeout
 	ctx := New(context.Background(), "test_operation", 100*time.Millisecond)
+	defer ctx.Cancel()
 
 	assert.False(t, ctx.IsExpired())
 	assert.True(t, ctx.TimeRemaining() > 0)
@@ -79,6 +85,7 @@ func TestTimeoutAndExpiration(t *testing.T) {
 // Test extracting values from context.
 func TestExtractValues(t *testing.T) {
 	ctx := New(context.Background(), "test_operation", 30*time.Second)
+	defer ctx.Cancel()
 	ctx = ctx.WithUser("user-123", "session-456")
 	ctx = ctx.WithNode("node-789")
 
@@ -110,6 +117,7 @@ func TestExtractFromRegularContext(t *testing.T) {
 // Test Fields method for logging.
 func TestFields(t *testing.T) {
 	ctx := New(context.Background(), "test_operation", 30*time.Second)
+	defer ctx.Cancel()
 	ctx = ctx.WithUser("user-123", "session-456")
 	ctx = ctx.WithNode("node-789")
 
@@ -129,6 +137,7 @@ func TestFields(t *testing.T) {
 func TestFromContext(t *testing.T) {
 	// Test with RequestContext
 	reqCtx := New(context.Background(), "test_operation", 30*time.Second)
+	defer reqCtx.Cancel()
 	extracted, ok := FromContext(reqCtx)
 	assert.True(t, ok)
 	assert.Equal(t, reqCtx, extracted)
@@ -145,7 +154,9 @@ func TestEnsure(t *testing.T) {
 	t.Run("with_request_context", func(t *testing.T) {
 		// Already a RequestContext
 		reqCtx := New(context.Background(), "original", 30*time.Second)
+		defer reqCtx.Cancel()
 		ensured := Ensure(reqCtx, "new_operation")
+		defer ensured.Cancel()
 
 		// Should return the same context
 		assert.Equal(t, reqCtx, ensured)
@@ -156,6 +167,7 @@ func TestEnsure(t *testing.T) {
 		// Regular context
 		regularCtx := context.Background()
 		ensured := Ensure(regularCtx, "new_operation")
+		defer ensured.Cancel()
 
 		// Should create new RequestContext
 		assert.NotNil(t, ensured)
@@ -169,6 +181,7 @@ func TestEnsure(t *testing.T) {
 		regularCtx := context.Background()
 		regularCtx = context.WithValue(regularCtx, traceIDKey, "existing-trace")
 		ensured := Ensure(regularCtx, "new_operation")
+		defer ensured.Cancel()
 
 		// Should preserve trace ID
 		assert.NotNil(t, ensured)
@@ -181,6 +194,7 @@ func TestEnsure(t *testing.T) {
 func TestContextCancellation(t *testing.T) {
 	parent, cancel := context.WithCancel(context.Background())
 	reqCtx := New(parent, "test_operation", 30*time.Second)
+	defer reqCtx.Cancel()
 
 	// Context should not be done initially
 	select {

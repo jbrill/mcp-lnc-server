@@ -1,8 +1,27 @@
 {
   "mcpServers": {
     "lnc-mcp-server": {
-      "command": "/path/to/mcp-lnc-server/mcp-lnc-server",
-      "args": []
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--env",
+        "LNC_MAILBOX_SERVER",
+        "--env",
+        "LNC_DEV_MODE",
+        "--env",
+        "LNC_INSECURE",
+        "--env",
+        "LNC_ALLOW_MUTATING_TOOLS",
+        "mcp-lnc-server"
+      ]
+    },
+    "mcp-regtest": {
+      "command": "node",
+      "args": [
+        "/Users/jasonbrill/Documents/dev-resources/frontend-regtest/mcp-regtest/build/index.js"
+      ]
     }
   }
 }

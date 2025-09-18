@@ -3,7 +3,9 @@ package services
 import (
 	"testing"
 
+	"github.com/jbrill/mcp-lnc-server/internal/interfaces"
 	"github.com/jbrill/mcp-lnc-server/internal/logging"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,12 +13,20 @@ import (
 	"google.golang.org/grpc"
 )
 
+type stubMCPServer struct {
+	tools []mcp.Tool
+}
+
+func (s *stubMCPServer) AddTool(tool mcp.Tool, handler interfaces.ToolHandler) {
+	s.tools = append(s.tools, tool)
+}
+
 // Test Manager creation and basic functionality.
 func TestManager_Creation(t *testing.T) {
 	err := logging.InitLogger(true)
 	require.NoError(t, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 	assert.NotNil(t, manager)
 	assert.Equal(t, zap.L(), manager.logger)
 
@@ -31,12 +41,47 @@ func TestManager_RegisterTools(t *testing.T) {
 	err := logging.InitLogger(true)
 	require.NoError(t, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 	manager.InitializeServices()
-	mcpServer := server.NewMCPServer("test-server", "1.0.0")
+	stub := &stubMCPServer{}
 
-	err = manager.RegisterTools(mcpServer)
+	err = manager.RegisterTools(stub)
 	assert.NoError(t, err)
+
+	names := make(map[string]struct{})
+	for _, tool := range stub.tools {
+		names[tool.Name] = struct{}{}
+	}
+
+	assert.Contains(t, names, "lnc_send_payment")
+	assert.Contains(t, names, "lnc_open_channel")
+	assert.Contains(t, names, "lnc_send_coins")
+	assert.NotZero(t, len(stub.tools))
+}
+
+func TestManager_RegisterTools_ReadOnlyMode(t *testing.T) {
+	err := logging.InitLogger(true)
+	require.NoError(t, err)
+
+	manager := NewManager(zap.L(), false)
+	manager.InitializeServices()
+	stub := &stubMCPServer{}
+
+	err = manager.RegisterTools(stub)
+	assert.NoError(t, err)
+
+	names := make(map[string]struct{})
+	for _, tool := range stub.tools {
+		names[tool.Name] = struct{}{}
+	}
+
+	assert.NotContains(t, names, "lnc_send_payment")
+	assert.NotContains(t, names, "lnc_open_channel")
+	assert.NotContains(t, names, "lnc_send_coins")
+	assert.Contains(t, names, "lnc_list_channels")
+	assert.Contains(t, names, "lnc_get_info")
+	assert.Contains(t, names, "lnc_list_unspent")
+	assert.Len(t, stub.tools, len(names))
 }
 
 // Test RegisterTools with nil MCP server.
@@ -44,7 +89,7 @@ func TestManager_RegisterTools_NilServer(t *testing.T) {
 	err := logging.InitLogger(true)
 	require.NoError(t, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 	manager.InitializeServices()
 
 	err = manager.RegisterTools(nil)
@@ -57,7 +102,7 @@ func TestManager_ConnectionCallback(t *testing.T) {
 	err := logging.InitLogger(true)
 	require.NoError(t, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 	manager.InitializeServices()
 
 	// Create a mock connection - this would normally be a real gRPC connection
@@ -79,7 +124,7 @@ func TestManager_ServicesStartWithNilClients(t *testing.T) {
 	err := logging.InitLogger(true)
 	require.NoError(t, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 	manager.InitializeServices()
 
 	// Services should start with nil clients until connection is established
@@ -91,13 +136,12 @@ func TestManager_ServicesStartWithNilClients(t *testing.T) {
 	assert.Nil(t, manager.nodeService.LightningClient)
 }
 
-
 // Test Shutdown functionality.
 func TestManager_Shutdown(t *testing.T) {
 	err := logging.InitLogger(true)
 	require.NoError(t, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 
 	// Test shutdown - should not error
 	err = manager.Shutdown()
@@ -109,7 +153,7 @@ func TestManager_ServiceIntegration(t *testing.T) {
 	err := logging.InitLogger(true)
 	require.NoError(t, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 	manager.InitializeServices()
 
 	// Test that services are properly initialized
@@ -157,7 +201,7 @@ func BenchmarkManager_Creation(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = NewManager(zap.L())
+		_ = NewManager(zap.L(), true)
 	}
 }
 
@@ -166,7 +210,7 @@ func BenchmarkManager_RegisterTools(b *testing.B) {
 	err := logging.InitLogger(true)
 	require.NoError(b, err)
 
-	manager := NewManager(zap.L())
+	manager := NewManager(zap.L(), true)
 	manager.InitializeServices()
 	mcpServer := server.NewMCPServer("test-server", "1.0.0")
 

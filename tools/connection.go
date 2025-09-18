@@ -1,7 +1,5 @@
 // Package tools provides MCP tool implementations for Lightning Network operations.
-//
-// This package contains all the MCP tools that allow AI assistants to interact.
-// With Lightning Network nodes through various service interfaces.
+// It enables AI assistants to interact with nodes through dedicated services.
 package tools
 
 import (
@@ -79,16 +77,17 @@ func (s *ConnectionService) HandleConnect(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Create request context with tracing
 	reqCtx := lnccontext.New(ctx, "lnc_connect", 45*time.Second)
+	defer reqCtx.Cancel()
 	logger := logging.LogWithContext(reqCtx)
-	
+
 	logger.Info("Starting LNC connection request",
 		zap.Any("params", request.Params.Arguments))
-	
+
 	defer func() {
 		logger.Info("Connection request completed",
 			zap.Duration("total_duration", reqCtx.Duration()))
 	}()
-	
+
 	pairingPhrase, ok := request.Params.Arguments["pairingPhrase"].(string)
 	if !ok {
 		logger.Error("Missing pairing phrase in request")
@@ -168,12 +167,12 @@ func (s *ConnectionService) HandleConnect(ctx context.Context,
 
 	// Add node ID to context for future operations
 	reqCtx = reqCtx.WithNode(nodeInfo.IdentityPubkey)
-	
+
 	// Notify main server of new connection
 	if s.ConnectionCallback != nil {
 		s.ConnectionCallback(conn)
 	}
-	
+
 	logger.Info("Successfully connected to Lightning node",
 		zap.String("node_pubkey", nodeInfo.IdentityPubkey),
 		zap.String("alias", nodeInfo.Alias),
@@ -197,11 +196,12 @@ func (s *ConnectionService) HandleConnect(ctx context.Context,
 func (s *ConnectionService) connectToLNC(ctx context.Context,
 	pairingPhrase, password, mailboxServer string, devMode,
 	insecure bool) (*grpc.ClientConn, *lnrpc.GetInfoResponse, error) {
-	
+
 	// Ensure we have a RequestContext
 	reqCtx := lnccontext.Ensure(ctx, "lnc_connect_internal")
+	defer reqCtx.Cancel()
 	logger := logging.LogWithContext(reqCtx)
-	
+
 	logger.Debug("Starting LNC connection process",
 		zap.String("mailbox", mailboxServer),
 		zap.Int("pairing_phrase_words", len(strings.Split(pairingPhrase, " "))),
@@ -259,7 +259,7 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 		},
 	)
 	if err != nil {
-		logger.Error("Failed to create mailbox connection", 
+		logger.Error("Failed to create mailbox connection",
 			zap.Error(err),
 			zap.Duration("failed_after", reqCtx.Duration()))
 		return nil, nil, fmt.Errorf("failed to create mailbox connection: %w", err)
@@ -268,7 +268,7 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 
 	// Give some time for the connection callbacks to be triggered (critical!)
 	logger.Debug("Waiting for connection callbacks to process")
-	
+
 	// Check for context cancellation during wait
 	select {
 	case <-time.After(3 * time.Second):
@@ -298,7 +298,7 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 			return nil, nil, fmt.Errorf("connection cancelled: %w", reqCtx.Err())
 		default:
 		}
-		
+
 		if authReceived && remotePub != nil {
 			logger.Debug("All callbacks received")
 			break
@@ -318,7 +318,7 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 	// Establish gRPC connection to LND
 	conn, err := lndConnect()
 	if err != nil {
-		logger.Error("Failed to establish LND connection", 
+		logger.Error("Failed to establish LND connection",
 			zap.Error(err),
 			zap.Duration("failed_after", reqCtx.Duration()))
 		return nil, nil, fmt.Errorf("failed to establish LND connection: %w", err)
@@ -330,7 +330,7 @@ func (s *ConnectionService) connectToLNC(ctx context.Context,
 	lightningClient := lnrpc.NewLightningClient(conn)
 	info, err := lightningClient.GetInfo(reqCtx, &lnrpc.GetInfoRequest{})
 	if err != nil {
-		logger.Error("Failed to get node info", 
+		logger.Error("Failed to get node info",
 			zap.Error(err),
 			zap.Duration("failed_after", reqCtx.Duration()))
 		conn.Close()
@@ -362,10 +362,11 @@ func (s *ConnectionService) HandleDisconnect(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Create request context
 	reqCtx := lnccontext.New(ctx, "lnc_disconnect", 10*time.Second)
+	defer reqCtx.Cancel()
 	logger := logging.LogWithContext(reqCtx)
-	
+
 	logger.Info("Disconnecting from Lightning node")
-	
+
 	if s.Connection != nil {
 		err := s.Connection.Close()
 		if err != nil {

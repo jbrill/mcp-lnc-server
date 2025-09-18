@@ -1,9 +1,7 @@
-// Package main implements the MCP LNC server daemon.
-//
-// The MCP LNC server provides a Model Context Protocol (MCP) interface to.
-// Lightning Network Daemon (LND) nodes via Lightning Node Connect (LNC).
-// This allows AI assistants like Claude to interact with Lightning Network.
-// Nodes securely through WebSocket connections.
+// Package main implements the MCP LNC server daemon. It exposes Lightning
+// Network Daemon (LND) nodes through the Model Context Protocol (MCP) using
+// Lightning Node Connect (LNC), enabling AI assistants to interact with the
+// Lightning Network over secure WebSocket tunnels.
 package main
 
 import (
@@ -14,34 +12,26 @@ import (
 	"syscall"
 	"time"
 
-	lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
 	"github.com/jbrill/mcp-lnc-server/internal/config"
+	lnccontext "github.com/jbrill/mcp-lnc-server/internal/context"
 	"github.com/jbrill/mcp-lnc-server/internal/logging"
 	"go.uber.org/zap"
 )
 
-const (
-	// DefaultConfigFile is the default config file name.
-	defaultConfigFile = "mcp-lnc-server.conf"
-
-	// DefaultDataDir is the default directory for data files.
-	defaultDataDir = "~/.mcp-lnc-server"
-)
-
-// Daemon represents the main daemon instance.
+// Daemon coordinates the MCP server lifecycle and shutdown orchestration.
 type Daemon struct {
 	cfg    *config.Config
 	logger *zap.Logger
 	server *Server
 
-	// Quit is used to signal shutdown.
+	// quit is used to signal shutdown.
 	quit chan struct{}
 
-	// ShutdownComplete is closed when all shutdown operations are complete.
+	// shutdownComplete is closed when all shutdown operations are complete.
 	shutdownComplete chan struct{}
 }
 
-// NewDaemon creates a new daemon instance with the given configuration.
+// NewDaemon constructs a daemon instance with the provided configuration.
 func NewDaemon(cfg *config.Config, logger *zap.Logger) (*Daemon, error) {
 	server, err := NewServer(cfg, logger)
 	if err != nil {
@@ -57,18 +47,19 @@ func NewDaemon(cfg *config.Config, logger *zap.Logger) (*Daemon, error) {
 	}, nil
 }
 
-// Start starts the daemon and blocks until it receives a shutdown signal.
+// Start runs the daemon until a shutdown signal or server failure occurs.
 func (d *Daemon) Start() error {
-	// Create context for daemon startup
+	// Create context for daemon startup.
 	ctx := lnccontext.New(context.Background(), "daemon_start", 0)
+	defer ctx.Cancel()
 	logger := logging.LogWithContext(ctx)
-	
+
 	logger.Info("Starting MCP LNC Server daemon",
 		zap.String("version", d.cfg.ServerVersion),
 		zap.Bool("development", d.cfg.Development),
 	)
 
-	// Start the server in a goroutine
+	// Start the server in a goroutine.
 	serverErrChan := make(chan error, 1)
 	go func() {
 		if err := d.server.Start(); err != nil {
@@ -76,24 +67,24 @@ func (d *Daemon) Start() error {
 		}
 	}()
 
-	// Set up signal handling for graceful shutdown
+	// Set up signal handling for graceful shutdown.
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// Start shutdown handler
+	// Start shutdown handler.
 	go d.shutdownHandler()
 
-	// Wait for either a shutdown signal or server error
+	// Wait for either a shutdown signal or server error.
 	select {
 	case sig := <-sigChan:
-		logger.Info("Received shutdown signal", 
+		logger.Info("Received shutdown signal",
 			zap.String("signal", sig.String()),
 			zap.Duration("uptime", ctx.Duration()))
 		close(d.quit)
 
 	case err := <-serverErrChan:
 		if err != nil && err != context.Canceled {
-			logger.Error("Server error", 
+			logger.Error("Server error",
 				zap.Error(err),
 				zap.Duration("uptime", ctx.Duration()))
 			close(d.quit)
@@ -104,7 +95,7 @@ func (d *Daemon) Start() error {
 		// Shutdown was triggered internally
 	}
 
-	// Wait for shutdown to complete
+	// Wait for shutdown to complete.
 	<-d.shutdownComplete
 	logger.Info("MCP LNC Server daemon shutdown complete",
 		zap.Duration("total_uptime", ctx.Duration()))
@@ -116,36 +107,38 @@ func (d *Daemon) Start() error {
 func (d *Daemon) Stop() {
 	select {
 	case <-d.quit:
-		// Already shutting down
+		// Already shutting down.
 		return
 	default:
 	}
 
-	ctx := lnccontext.New(context.Background(), "daemon_stop", 
+	ctx := lnccontext.New(context.Background(), "daemon_stop",
 		5*time.Second)
+	defer ctx.Cancel()
 	logger := logging.LogWithContext(ctx)
 	logger.Info("Initiating daemon shutdown...")
 	close(d.quit)
 }
 
-// ShutdownHandler handles the graceful shutdown process.
+// shutdownHandler drains the quit channel and coordinates shutdown.
 func (d *Daemon) shutdownHandler() {
 	<-d.quit
 
-	// Create context for shutdown with timeout
+	// Create context for shutdown with timeout.
 	shutdownCtx := lnccontext.New(
-		context.Background(), 
-		"daemon_shutdown", 
+		context.Background(),
+		"daemon_shutdown",
 		d.cfg.ShutdownTimeout,
 	)
+	defer shutdownCtx.Cancel()
 	logger := logging.LogWithContext(shutdownCtx)
-	
+
 	logger.Info("Beginning graceful shutdown...",
 		zap.Duration("timeout", d.cfg.ShutdownTimeout))
 
-	// Stop the server
+	// Stop the server.
 	if err := d.server.Stop(shutdownCtx); err != nil {
-		logger.Error("Error during server shutdown", 
+		logger.Error("Error during server shutdown",
 			zap.Error(err),
 			zap.Duration("shutdown_duration", shutdownCtx.Duration()))
 	} else {
@@ -153,11 +146,11 @@ func (d *Daemon) shutdownHandler() {
 			zap.Duration("shutdown_duration", shutdownCtx.Duration()))
 	}
 
-	// Signal shutdown complete
+	// Signal shutdown complete.
 	close(d.shutdownComplete)
 }
 
-// Main is the entry point for the MCP LNC server daemon.
+// main is the entry point for the MCP LNC server daemon.
 func main() {
 	// Load configuration
 	cfg := config.LoadConfig()

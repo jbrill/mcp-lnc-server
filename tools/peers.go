@@ -285,11 +285,10 @@ func (s *PeerService) HandleDescribeGraph(ctx context.Context,
 		}
 
 		sampleNodes = append(sampleNodes, map[string]any{
-			"pub_key":     node.PubKey,
-			"alias":       node.Alias,
-			"addresses":   addresses,
-			"color":       node.Color,
-			"last_update": node.LastUpdate,
+			"pub_key":   node.PubKey,
+			"alias":     node.Alias,
+			"addresses": addresses,
+			"color":     node.Color,
 		})
 	}
 
@@ -300,12 +299,11 @@ func (s *PeerService) HandleDescribeGraph(ctx context.Context,
 		}
 
 		sampleEdges = append(sampleEdges, map[string]any{
-			"channel_id":  edge.ChannelId,
-			"chan_point":  edge.ChanPoint,
-			"node1_pub":   edge.Node1Pub,
-			"node2_pub":   edge.Node2Pub,
-			"capacity":    edge.Capacity,
-			"last_update": edge.LastUpdate,
+			"channel_id": edge.ChannelId,
+			"chan_point": edge.ChanPoint,
+			"node1_pub":  edge.Node1Pub,
+			"node2_pub":  edge.Node2Pub,
+			"capacity":   edge.Capacity,
 		})
 	}
 
@@ -383,7 +381,6 @@ func (s *PeerService) HandleGetNodeInfo(ctx context.Context,
 		"alias":          nodeInfo.Node.Alias,
 		"addresses":      addresses,
 		"color":          nodeInfo.Node.Color,
-		"last_update":    nodeInfo.Node.LastUpdate,
 		"num_channels":   nodeInfo.NumChannels,
 		"total_capacity": nodeInfo.TotalCapacity,
 	}
@@ -392,12 +389,11 @@ func (s *PeerService) HandleGetNodeInfo(ctx context.Context,
 		channels := make([]map[string]any, len(nodeInfo.Channels))
 		for i, channel := range nodeInfo.Channels {
 			channels[i] = map[string]any{
-				"channel_id":  channel.ChannelId,
-				"chan_point":  channel.ChanPoint,
-				"node1_pub":   channel.Node1Pub,
-				"node2_pub":   channel.Node2Pub,
-				"capacity":    channel.Capacity,
-				"last_update": channel.LastUpdate,
+				"channel_id": channel.ChannelId,
+				"chan_point": channel.ChanPoint,
+				"node1_pub":  channel.Node1Pub,
+				"node2_pub":  channel.Node2Pub,
+				"capacity":   channel.Capacity,
 			}
 		}
 		nodeData["channels"] = channels

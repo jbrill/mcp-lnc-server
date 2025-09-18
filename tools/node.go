@@ -47,6 +47,12 @@ func (s *NodeService) HandleGetInfo(ctx context.Context,
 			fmt.Sprintf("Failed to get node info: %v", err)), nil
 	}
 
+	chains := chainNetworks(info.Chains)
+	primaryNetwork := ""
+	if len(chains) > 0 {
+		primaryNetwork = chains[0]
+	}
+
 	return mcp.NewToolResultText(fmt.Sprintf(`{
 		"node_id": "%s",
 		"alias": "%s",
@@ -59,7 +65,7 @@ func (s *NodeService) HandleGetInfo(ctx context.Context,
 		"synced_to_graph": %t,
 		"block_height": %d,
 		"block_hash": "%s",
-		"testnet": %t,
+		"primary_network": "%s",
 		"chains": %v
 	}`,
 		info.IdentityPubkey,
@@ -73,8 +79,8 @@ func (s *NodeService) HandleGetInfo(ctx context.Context,
 		info.SyncedToGraph,
 		info.BlockHeight,
 		info.BlockHash,
-		info.Testnet,
-		chainNames(info.Chains),
+		primaryNetwork,
+		chains,
 	)), nil
 }
 
@@ -114,6 +120,15 @@ func (s *NodeService) HandleGetBalance(ctx context.Context,
 			fmt.Sprintf("Failed to get channel balance: %v", err)), nil
 	}
 
+	localBalance := safeAmount(channelBalance.GetLocalBalance())
+	remoteBalance := safeAmount(channelBalance.GetRemoteBalance())
+	unsettledLocal := safeAmount(channelBalance.GetUnsettledLocalBalance())
+	unsettledRemote := safeAmount(channelBalance.GetUnsettledRemoteBalance())
+	pendingLocal := safeAmount(channelBalance.GetPendingOpenLocalBalance())
+	pendingRemote := safeAmount(channelBalance.GetPendingOpenRemoteBalance())
+	totalChannelBalance := localBalance.sat + remoteBalance.sat
+	totalPendingBalance := pendingLocal.sat + pendingRemote.sat
+
 	return mcp.NewToolResultText(fmt.Sprintf(`{
 		"wallet_balance": {
 			"total_balance": %d,
@@ -121,7 +136,7 @@ func (s *NodeService) HandleGetBalance(ctx context.Context,
 			"unconfirmed_balance": %d
 		},
 		"channel_balance": {
-			"balance": %d,
+			"total_balance": %d,
 			"pending_open_balance": %d,
 			"local_balance": {
 				"sat": %d,
@@ -138,30 +153,54 @@ func (s *NodeService) HandleGetBalance(ctx context.Context,
 			"unsettled_remote_balance": {
 				"sat": %d,
 				"msat": %d
+			},
+			"pending_open_local_balance": {
+				"sat": %d,
+				"msat": %d
+			},
+			"pending_open_remote_balance": {
+				"sat": %d,
+				"msat": %d
 			}
 		}
 	}`,
 		walletBalance.TotalBalance,
 		walletBalance.ConfirmedBalance,
 		walletBalance.UnconfirmedBalance,
-		channelBalance.Balance,
-		channelBalance.PendingOpenBalance,
-		channelBalance.LocalBalance.Sat,
-		channelBalance.LocalBalance.Msat,
-		channelBalance.RemoteBalance.Sat,
-		channelBalance.RemoteBalance.Msat,
-		channelBalance.UnsettledLocalBalance.Sat,
-		channelBalance.UnsettledLocalBalance.Msat,
-		channelBalance.UnsettledRemoteBalance.Sat,
-		channelBalance.UnsettledRemoteBalance.Msat,
+		totalChannelBalance,
+		totalPendingBalance,
+		localBalance.sat,
+		localBalance.msat,
+		remoteBalance.sat,
+		remoteBalance.msat,
+		unsettledLocal.sat,
+		unsettledLocal.msat,
+		unsettledRemote.sat,
+		unsettledRemote.msat,
+		pendingLocal.sat,
+		pendingLocal.msat,
+		pendingRemote.sat,
+		pendingRemote.msat,
 	)), nil
 }
 
-// ChainNames extracts chain names from Chain slice.
-func chainNames(chains []*lnrpc.Chain) []string {
-	names := make([]string, len(chains))
-	for i, chain := range chains {
-		names[i] = chain.Chain
+type balanceBreakdown struct {
+	sat  uint64
+	msat uint64
+}
+
+func safeAmount(amount *lnrpc.Amount) balanceBreakdown {
+	if amount == nil {
+		return balanceBreakdown{}
 	}
-	return names
+	return balanceBreakdown{sat: amount.Sat, msat: amount.Msat}
+}
+
+// chainNetworks extracts chain networks from Chain slice.
+func chainNetworks(chains []*lnrpc.Chain) []string {
+	networks := make([]string, len(chains))
+	for i, chain := range chains {
+		networks[i] = chain.Network
+	}
+	return networks
 }

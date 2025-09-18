@@ -24,11 +24,11 @@ func TestErrorCodes(t *testing.T) {
 // Test New function creates proper error.
 func TestNew(t *testing.T) {
 	err := New(ErrCodeTimeout, "test error message")
-	
+
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "test error message")
 	assert.Contains(t, err.Error(), "Timeout")
-	
+
 	// Test error structure.
 	assert.Equal(t, ErrCodeTimeout, err.Code)
 	assert.Equal(t, "test error message", err.Message)
@@ -39,7 +39,7 @@ func TestNew(t *testing.T) {
 func TestWrap(t *testing.T) {
 	originalErr := errors.New("original error")
 	wrappedErr := Wrap(originalErr, ErrCodeConnectionFailed, "connection failed")
-	
+
 	assert.NotNil(t, wrappedErr)
 	assert.Contains(t, wrappedErr.Error(), "connection failed")
 	assert.Contains(t, wrappedErr.Error(), "ConnectionFailed")
@@ -50,7 +50,7 @@ func TestWrap(t *testing.T) {
 // Test Wrap with nil error.
 func TestWrap_NilError(t *testing.T) {
 	wrappedErr := Wrap(nil, ErrCodeUnknown, "test message")
-	
+
 	assert.NotNil(t, wrappedErr)
 	assert.Contains(t, wrappedErr.Error(), "test message")
 	assert.Contains(t, wrappedErr.Error(), "Unknown")
@@ -98,7 +98,7 @@ func TestErrorWrappingChain(t *testing.T) {
 	originalErr := errors.New("database connection failed")
 	level1Err := Wrap(originalErr, ErrCodeConnectionFailed, "service unavailable")
 	level2Err := Wrap(level1Err, ErrCodeUnknown, "request processing failed")
-	
+
 	// Verify all messages are present in the final error.
 	finalError := level2Err.Error()
 	assert.Contains(t, finalError, "database connection failed")
@@ -118,7 +118,7 @@ func TestErrorInterface(t *testing.T) {
 
 	// Should implement error interface.
 	var _ error = err
-	
+
 	assert.Equal(t, "[InvalidInvoice] test message", err.Error())
 }
 
@@ -168,7 +168,7 @@ func BenchmarkNew(b *testing.B) {
 // Benchmark error wrapping.
 func BenchmarkWrap(b *testing.B) {
 	originalErr := errors.New("original error")
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = Wrap(originalErr, ErrCodeConnectionFailed, "wrapped error")
@@ -178,7 +178,7 @@ func BenchmarkWrap(b *testing.B) {
 // Benchmark error string generation.
 func BenchmarkErrorString(b *testing.B) {
 	err := New(ErrCodeInvalidInvoice, "benchmark error message")
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = err.Error()
@@ -188,14 +188,14 @@ func BenchmarkErrorString(b *testing.B) {
 // Test Is function.
 func TestIs(t *testing.T) {
 	err := New(ErrCodeTimeout, "timeout error")
-	
+
 	assert.True(t, Is(err, ErrCodeTimeout))
 	assert.False(t, Is(err, ErrCodeUnknown))
-	
+
 	// Test with non-Error type.
 	stdErr := errors.New("standard error")
 	assert.False(t, Is(stdErr, ErrCodeTimeout))
-	
+
 	// Test with nil.
 	assert.False(t, Is(nil, ErrCodeTimeout))
 }
@@ -203,17 +203,17 @@ func TestIs(t *testing.T) {
 // Test As function.
 func TestAs(t *testing.T) {
 	err := New(ErrCodeInvalidInvoice, "invalid invoice")
-	
+
 	var e *Error
 	assert.True(t, As(err, &e))
 	assert.Equal(t, ErrCodeInvalidInvoice, e.Code)
 	assert.Equal(t, "invalid invoice", e.Message)
-	
+
 	// Test with non-Error type.
 	stdErr := errors.New("standard error")
 	var e2 *Error
 	assert.False(t, As(stdErr, &e2))
-	
+
 	// Test with nil.
 	var e3 *Error
 	assert.False(t, As(nil, &e3))
@@ -223,9 +223,9 @@ func TestAs(t *testing.T) {
 func TestUnwrap(t *testing.T) {
 	originalErr := errors.New("original")
 	wrappedErr := Wrap(originalErr, ErrCodeConnectionFailed, "wrapped")
-	
+
 	assert.Equal(t, originalErr, wrappedErr.Unwrap())
-	
+
 	// Test unwrapping with no cause
 	errorWithoutCause := New(ErrCodeTimeout, "timeout")
 	assert.Nil(t, errorWithoutCause.Unwrap())
@@ -235,7 +235,7 @@ func TestUnwrap(t *testing.T) {
 func TestWrapf(t *testing.T) {
 	originalErr := errors.New("original error")
 	wrappedErr := Wrapf(originalErr, ErrCodeConnectionFailed, "connection failed to %s:%d", "localhost", 8080)
-	
+
 	assert.NotNil(t, wrappedErr)
 	assert.Contains(t, wrappedErr.Error(), "connection failed to localhost:8080")
 	assert.Contains(t, wrappedErr.Error(), "original error")
@@ -273,56 +273,56 @@ func TestCommonErrorConstructors(t *testing.T) {
 	t.Run("ErrConnectionFailed", func(t *testing.T) {
 		originalErr := errors.New("connection refused")
 		err := ErrConnectionFailed(originalErr, "server unreachable")
-		
+
 		assert.Equal(t, ErrCodeConnectionFailed, err.Code)
 		assert.Contains(t, err.Message, "server unreachable")
 		assert.Equal(t, originalErr, err.Cause)
 	})
-	
+
 	t.Run("ErrInvalidPairingPhrase", func(t *testing.T) {
 		err := ErrInvalidPairingPhrase("wrong number of words")
-		
+
 		assert.Equal(t, ErrCodeInvalidPairingPhrase, err.Code)
 		assert.Contains(t, err.Message, "wrong number of words")
 		assert.Nil(t, err.Cause)
 	})
-	
+
 	t.Run("ErrTimeout", func(t *testing.T) {
 		err := ErrTimeout("connection establishment")
-		
+
 		assert.Equal(t, ErrCodeTimeout, err.Code)
 		assert.Contains(t, err.Message, "connection establishment")
 		assert.Nil(t, err.Cause)
 	})
-	
+
 	t.Run("ErrNotConnected", func(t *testing.T) {
 		err := ErrNotConnected()
-		
+
 		assert.Equal(t, ErrCodeNotConnected, err.Code)
 		assert.Contains(t, err.Message, "not connected")
 		assert.Nil(t, err.Cause)
 	})
-	
+
 	t.Run("ErrInvalidInvoice", func(t *testing.T) {
 		err := ErrInvalidInvoice("invalid checksum")
-		
+
 		assert.Equal(t, ErrCodeInvalidInvoice, err.Code)
 		assert.Contains(t, err.Message, "invalid checksum")
 		assert.Nil(t, err.Cause)
 	})
-	
+
 	t.Run("ErrInsufficientBalance", func(t *testing.T) {
 		err := ErrInsufficientBalance(1000, 500)
-		
+
 		assert.Equal(t, ErrCodeInsufficientBalance, err.Code)
 		assert.Contains(t, err.Message, "1000")
 		assert.Contains(t, err.Message, "500")
 		assert.Nil(t, err.Cause)
 	})
-	
+
 	t.Run("ErrInvalidAddress", func(t *testing.T) {
 		err := ErrInvalidAddress("invalid-address")
-		
+
 		assert.Equal(t, ErrCodeInvalidAddress, err.Code)
 		assert.Contains(t, err.Message, "invalid-address")
 		assert.Nil(t, err.Cause)

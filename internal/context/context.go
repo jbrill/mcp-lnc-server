@@ -1,8 +1,5 @@
-// Package context provides request context management and tracing capabilities.
-// For the MCP LNC server.
-//
-// This package implements context propagation to enable request tracing,.
-// Timeout management, and structured logging throughout the service lifecycle.
+// Package context provides request-scoped metadata and tracing helpers for the
+// MCP LNC server.
 package context
 
 import (
@@ -17,19 +14,20 @@ type contextKey string
 
 const (
 	// Context keys for request metadata.
-	requestIDKey  contextKey = "request_id"
-	traceIDKey    contextKey = "trace_id"
-	userIDKey     contextKey = "user_id"
-	sessionIDKey  contextKey = "session_id"
-	nodeIDKey     contextKey = "node_id"
-	operationKey  contextKey = "operation"
-	startTimeKey  contextKey = "start_time"
-	deadlineKey   contextKey = "deadline"
+	requestIDKey contextKey = "request_id"
+	traceIDKey   contextKey = "trace_id"
+	userIDKey    contextKey = "user_id"
+	sessionIDKey contextKey = "session_id"
+	nodeIDKey    contextKey = "node_id"
+	operationKey contextKey = "operation"
+	startTimeKey contextKey = "start_time"
+	deadlineKey  contextKey = "deadline"
 )
 
 // RequestContext wraps a standard context with request-specific metadata.
 type RequestContext struct {
 	context.Context
+	cancel    context.CancelFunc
 	requestID string
 	traceID   string
 	userID    string
@@ -40,41 +38,73 @@ type RequestContext struct {
 	deadline  time.Time
 }
 
-// New creates a new RequestContext with generated IDs and timeout.
+// New creates a new RequestContext with generated identifiers and a timeout.
 func New(parent context.Context, operation string, timeout time.Duration) *RequestContext {
-	ctx, cancel := context.WithTimeout(parent, timeout)
-	
-	// Store cancel func in context for potential cleanup
-	ctx = context.WithValue(ctx, "cancel", cancel)
-	
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+	)
+
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(parent, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(parent)
+	}
+
 	now := time.Now()
 	rc := &RequestContext{
 		Context:   ctx,
+		cancel:    cancel,
 		requestID: uuid.New().String(),
 		traceID:   uuid.New().String(),
 		operation: operation,
 		startTime: now,
 		deadline:  now.Add(timeout),
 	}
-	
-	// Store values in underlying context for middleware compatibility
+
+	// Store values in underlying context for middleware compatibility.
 	rc.Context = context.WithValue(rc.Context, requestIDKey, rc.requestID)
 	rc.Context = context.WithValue(rc.Context, traceIDKey, rc.traceID)
 	rc.Context = context.WithValue(rc.Context, operationKey, rc.operation)
 	rc.Context = context.WithValue(rc.Context, startTimeKey, rc.startTime)
 	rc.Context = context.WithValue(rc.Context, deadlineKey, rc.deadline)
-	
+
 	return rc
 }
 
-// WithTraceID creates a new RequestContext with an existing trace ID for.
-// Distributed tracing.
-func WithTraceID(parent context.Context, traceID, operation string, 
+// WithTraceID clones a RequestContext while reusing an existing trace ID for
+// distributed tracing.
+func WithTraceID(parent context.Context, traceID, operation string,
 	timeout time.Duration) *RequestContext {
 	rc := New(parent, operation, timeout)
 	rc.traceID = traceID
 	rc.Context = context.WithValue(rc.Context, traceIDKey, traceID)
 	return rc
+}
+
+// Cancel releases resources associated with the context.
+func (rc *RequestContext) Cancel() {
+	if rc == nil || rc.cancel == nil {
+		return
+	}
+	rc.cancel()
+	rc.cancel = nil
+}
+
+// Done returns a channel that is closed when work associated with the context completes.
+func (rc *RequestContext) Done() <-chan struct{} {
+	if rc == nil {
+		return nil
+	}
+	return rc.Context.Done()
+}
+
+// Err returns the error associated with the context, if any.
+func (rc *RequestContext) Err() error {
+	if rc == nil {
+		return nil
+	}
+	return rc.Context.Err()
 }
 
 // WithUser adds user information to the context.
@@ -143,7 +173,7 @@ func (rc *RequestContext) IsExpired() bool {
 	return time.Now().After(rc.deadline)
 }
 
-// Static functions for extracting values from any context.
+// Helper functions for extracting values from any context.
 
 // GetRequestID extracts the request ID from any context.
 func GetRequestID(ctx context.Context) string {
@@ -201,7 +231,7 @@ func GetStartTime(ctx context.Context) time.Time {
 	return time.Time{}
 }
 
-// GetDuration calculates the duration from start time in context.
+// GetDuration calculates the duration from the stored start time in context.
 func GetDuration(ctx context.Context) time.Duration {
 	if t, ok := ctx.Value(startTimeKey).(time.Time); ok {
 		return time.Since(t)
@@ -212,7 +242,7 @@ func GetDuration(ctx context.Context) time.Duration {
 // Fields returns all context fields as a map for logging.
 func (rc *RequestContext) Fields() map[string]any {
 	fields := make(map[string]any)
-	
+
 	if rc.requestID != "" {
 		fields["request_id"] = rc.requestID
 	}
@@ -233,7 +263,7 @@ func (rc *RequestContext) Fields() map[string]any {
 	}
 	fields["duration_ms"] = rc.Duration().Milliseconds()
 	fields["time_remaining_ms"] = rc.TimeRemaining().Milliseconds()
-	
+
 	return fields
 }
 
@@ -243,17 +273,17 @@ func FromContext(ctx context.Context) (*RequestContext, bool) {
 	return rc, ok
 }
 
-// Ensure wraps a context as RequestContext if it isn't already.
+// Ensure wraps a context as RequestContext if it is not already.
 func Ensure(ctx context.Context, operation string) *RequestContext {
 	if rc, ok := FromContext(ctx); ok {
 		return rc
 	}
-	
-	// Check if we have existing trace ID to maintain
+
+	// Check if we have an existing trace ID to maintain.
 	if traceID := GetTraceID(ctx); traceID != "" {
 		return WithTraceID(ctx, traceID, operation, 30*time.Second)
 	}
-	
-	// Create new context with default timeout
+
+	// Create new context with default timeout.
 	return New(ctx, operation, 30*time.Second)
 }

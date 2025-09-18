@@ -34,6 +34,14 @@ unit:
 	@$(call print, "Running unit tests.")
 	$(UNIT)
 
+test-docker:
+	@$(call print, "Running unit tests inside golang:1.24.5 container.")
+	docker run --rm \
+		-v $(PWD):/workspace \
+		-w /workspace \
+		-e GO111MODULE=on \
+		golang:1.24.5 go test ./...
+
 unit-cover:
 	@$(call print, "Running unit tests with coverage.")
 	$(GOTEST) -coverprofile=coverage.out ./...
@@ -118,6 +126,7 @@ help:
 	@echo "  build-release - Build optimized release binary"
 	@echo "  install       - Install the binary to GOPATH/bin"
 	@echo "  unit          - Run unit tests"
+	@echo "  test-docker   - Run unit tests inside golang:1.24.5 container"
 	@echo "  unit-cover    - Run unit tests with coverage"
 	@echo "  fmt           - Format Go source code"
 	@echo "  lint          - Run golangci-lint"
@@ -130,4 +139,4 @@ help:
 	@echo "  help          - Show this help message"
 
 # Instruct make to not interpret these as file/folder related targets
-.PHONY: unit unit-cover fmt lint mod-tidy mod-check build build-release install clean check docker-build docker-run help
+.PHONY: unit test-docker unit-cover fmt lint mod-tidy mod-check build build-release install clean check docker-build docker-run help

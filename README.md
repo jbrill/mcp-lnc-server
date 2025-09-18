@@ -20,8 +20,8 @@ Each service is designed to be independent, testable, and extensible with clear 
 
 ### Prerequisites
 
-- Go 1.21 or higher
-- A Lightning Network node (LND, Core Lightning, etc.)
+- Go 1.24.4 or higher (with toolchain downloads enabled)
+- LND v0.20.x with Lightning Node Connect enabled
 - LNC pairing phrase and password
 
 ### Build
@@ -70,6 +70,13 @@ export LNC_INSECURE="true"
 export LNC_CONNECT_TIMEOUT="30"
 export LNC_MAX_RETRIES="3"
 ```
+
+#### Tool Modes
+
+The server registers a read-only toolset by default so new installations can
+explore node state safely. Set `LNC_ALLOW_MUTATING_TOOLS=true` only when you are
+ready to enable state-changing tools (`lnc_send_payment`, `lnc_open_channel`,
+`lnc_send_coins`, and similar operations).
 
 ## Available Tools
 
@@ -205,27 +212,66 @@ go build -o mcp-lnc-server
 # Test
 go test ./...
 
+# Test inside Docker (Go 1.24.5)
+make test-docker
+
+# Build Docker image for deployment
+docker build -t mcp-lnc-server .
+
 # Build for different platforms
 GOOS=linux GOARCH=amd64 go build -o mcp-lnc-server-linux
 GOOS=darwin GOARCH=amd64 go build -o mcp-lnc-server-macos
 GOOS=windows GOARCH=amd64 go build -o mcp-lnc-server-windows.exe
 ```
 
-### Development Environment
+### Local Integration Testing
 
-For local development with regtest:
-
-1. Set up LND in regtest mode
-2. Generate LNC pairing phrase:
+1. Start an LND v0.20.x node in regtest with Lightning Node Connect enabled
+   (`lnd --noseedbackup --pilot=lightninglabs-remote ...`).
+2. Generate a pairing phrase with the Lightning Labs `zanelit` helper:
    ```bash
-   zanelit sessions add --label dev-session --mailboxserveraddr aperture:11110 --type admin --devserver
+   zanelit sessions add --label dev-session \
+     --mailboxserveraddr aperture:11110 --type admin --devserver
    ```
-3. Configure environment:
+3. Export development environment variables:
    ```bash
    export LNC_MAILBOX_SERVER="aperture:11110"
    export LNC_DEV_MODE="true"
    export LNC_INSECURE="true"
+   export LNC_ALLOW_MUTATING_TOOLS="false"  # keep read-only while testing
    ```
+4. Build and run the MCP server locally:
+   ```bash
+   go build -o mcp-lnc-server
+   ./mcp-lnc-server
+   ```
+5. Connect via Claude Desktop or another MCP client and exercise read-only
+   tools (`lnc_get_info`, `lnc_list_channels`, `lnc_list_unspent`).
+6. When you are ready to test mutating operations, stop the server, set
+   `LNC_ALLOW_MUTATING_TOOLS=true`, restart it, and then try tools like
+   `lnc_send_payment` or `lnc_open_channel` against a controlled environment.
+7. If your local Go version lags behind the required toolchain, use Docker to
+   run the tests without installing Go:
+   ```bash
+   make test-docker
+   ```
+
+### Running with Docker
+
+After building the image, start the server in a container:
+
+```bash
+docker run --rm \
+  -e LNC_MAILBOX_SERVER="mailbox.terminal.lightning.today:443" \
+  -e LNC_DEV_MODE="false" \
+  -e LNC_INSECURE="false" \
+  -e LNC_ALLOW_MUTATING_TOOLS="false" \
+  mcp-lnc-server
+```
+
+Swap environment variables for regtest/local deployments as needed. The MCP
+client (Claude, Cursor, etc.) will still prompt for the pairing phrase and
+password via the `lnc_connect` tool.
 
 ## Security
 

@@ -1,7 +1,6 @@
 // Package logging provides structured logging functionality for the MCP LNC server.
-//
-// This package uses zap for high-performance structured logging with support.
-// For both development and production configurations.
+// It builds on zap for high-performance logging in both development and
+// production configurations.
 package logging
 
 import (

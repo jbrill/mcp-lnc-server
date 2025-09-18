@@ -27,14 +27,14 @@ type MockLightningClient struct {
 // GetInfo mocks the GetInfo method.
 func (m *MockLightningClient) GetInfo(ctx context.Context,
 	req *lnrpc.GetInfoRequest) (*lnrpc.GetInfoResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.GetInfoResponse), args.Error(1)
 }
 
 // WalletBalance mocks the WalletBalance method.
 func (m *MockLightningClient) WalletBalance(ctx context.Context,
 	req *lnrpc.WalletBalanceRequest) (*lnrpc.WalletBalanceResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.WalletBalanceResponse), args.Error(1)
 }
 
@@ -42,56 +42,56 @@ func (m *MockLightningClient) WalletBalance(ctx context.Context,
 func (m *MockLightningClient) ChannelBalance(ctx context.Context,
 	req *lnrpc.ChannelBalanceRequest) (*lnrpc.ChannelBalanceResponse,
 	error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.ChannelBalanceResponse), args.Error(1)
 }
 
 // ListChannels mocks the ListChannels method.
 func (m *MockLightningClient) ListChannels(ctx context.Context,
 	req *lnrpc.ListChannelsRequest) (*lnrpc.ListChannelsResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.ListChannelsResponse), args.Error(1)
 }
 
 // AddInvoice mocks the AddInvoice method.
 func (m *MockLightningClient) AddInvoice(ctx context.Context,
 	req *lnrpc.Invoice) (*lnrpc.AddInvoiceResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.AddInvoiceResponse), args.Error(1)
 }
 
 // DecodePayReq mocks the DecodePayReq method.
 func (m *MockLightningClient) DecodePayReq(ctx context.Context,
 	req *lnrpc.PayReqString) (*lnrpc.PayReq, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.PayReq), args.Error(1)
 }
 
 // SendCoins mocks the SendCoins method.
 func (m *MockLightningClient) SendCoins(ctx context.Context,
 	req *lnrpc.SendCoinsRequest) (*lnrpc.SendCoinsResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.SendCoinsResponse), args.Error(1)
 }
 
 // NewAddress mocks the NewAddress method.
 func (m *MockLightningClient) NewAddress(ctx context.Context,
 	req *lnrpc.NewAddressRequest) (*lnrpc.NewAddressResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.NewAddressResponse), args.Error(1)
 }
 
 // ConnectPeer mocks the ConnectPeer method.
 func (m *MockLightningClient) ConnectPeer(ctx context.Context,
 	req *lnrpc.ConnectPeerRequest) (*lnrpc.ConnectPeerResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.ConnectPeerResponse), args.Error(1)
 }
 
 // ListPeers mocks the ListPeers method.
 func (m *MockLightningClient) ListPeers(ctx context.Context,
 	req *lnrpc.ListPeersRequest) (*lnrpc.ListPeersResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.ListPeersResponse), args.Error(1)
 }
 
@@ -99,21 +99,21 @@ func (m *MockLightningClient) ListPeers(ctx context.Context,
 func (m *MockLightningClient) DisconnectPeer(ctx context.Context,
 	req *lnrpc.DisconnectPeerRequest) (*lnrpc.DisconnectPeerResponse,
 	error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.DisconnectPeerResponse), args.Error(1)
 }
 
 // DescribeGraph mocks the DescribeGraph method.
 func (m *MockLightningClient) DescribeGraph(ctx context.Context,
 	req *lnrpc.ChannelGraphRequest) (*lnrpc.ChannelGraph, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.ChannelGraph), args.Error(1)
 }
 
 // GetNodeInfo mocks the GetNodeInfo method.
 func (m *MockLightningClient) GetNodeInfo(ctx context.Context,
 	req *lnrpc.NodeInfoRequest) (*lnrpc.NodeInfo, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.NodeInfo), args.Error(1)
 }
 
@@ -121,7 +121,7 @@ func (m *MockLightningClient) GetNodeInfo(ctx context.Context,
 func (m *MockLightningClient) PendingChannels(ctx context.Context,
 	req *lnrpc.PendingChannelsRequest) (*lnrpc.PendingChannelsResponse,
 	error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.PendingChannelsResponse), args.Error(1)
 }
 
@@ -129,7 +129,7 @@ func (m *MockLightningClient) PendingChannels(ctx context.Context,
 func (m *MockLightningClient) OpenChannel(ctx context.Context,
 	req *lnrpc.OpenChannelRequest) (lnrpc.Lightning_OpenChannelClient,
 	error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(lnrpc.Lightning_OpenChannelClient), args.Error(1)
 }
 
@@ -137,28 +137,28 @@ func (m *MockLightningClient) OpenChannel(ctx context.Context,
 func (m *MockLightningClient) CloseChannel(ctx context.Context,
 	req *lnrpc.CloseChannelRequest) (lnrpc.Lightning_CloseChannelClient,
 	error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(lnrpc.Lightning_CloseChannelClient), args.Error(1)
 }
 
 // GetTransactions mocks the GetTransactions method.
 func (m *MockLightningClient) GetTransactions(ctx context.Context,
 	req *lnrpc.GetTransactionsRequest) (*lnrpc.TransactionDetails, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.TransactionDetails), args.Error(1)
 }
 
 // ListUnspent mocks the ListUnspent method.
 func (m *MockLightningClient) ListUnspent(ctx context.Context,
 	req *lnrpc.ListUnspentRequest) (*lnrpc.ListUnspentResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.ListUnspentResponse), args.Error(1)
 }
 
 // EstimateFee mocks the EstimateFee method.
 func (m *MockLightningClient) EstimateFee(ctx context.Context,
 	req *lnrpc.EstimateFeeRequest) (*lnrpc.EstimateFeeResponse, error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(*lnrpc.EstimateFeeResponse), args.Error(1)
 }
 
@@ -172,7 +172,7 @@ type MockRouterClient struct {
 func (m *MockRouterClient) SendPaymentV2(ctx context.Context,
 	req *routerrpc.SendPaymentRequest) (routerrpc.Router_SendPaymentV2Client,
 	error) {
-	args := m.Called(ctx, req)
+	args := m.Mock.Called(ctx, req)
 	return args.Get(0).(routerrpc.Router_SendPaymentV2Client), args.Error(1)
 }
 
@@ -187,7 +187,7 @@ func (m *MockLogger) Debug(msg string, fields ...zap.Field) {
 	for _, field := range fields {
 		args = append(args, field)
 	}
-	m.Called(args...)
+	m.Mock.Called(args...)
 }
 
 // Info mocks the Info method.
@@ -196,7 +196,7 @@ func (m *MockLogger) Info(msg string, fields ...zap.Field) {
 	for _, field := range fields {
 		args = append(args, field)
 	}
-	m.Called(args...)
+	m.Mock.Called(args...)
 }
 
 // Warn mocks the Warn method.
@@ -205,7 +205,7 @@ func (m *MockLogger) Warn(msg string, fields ...zap.Field) {
 	for _, field := range fields {
 		args = append(args, field)
 	}
-	m.Called(args...)
+	m.Mock.Called(args...)
 }
 
 // Error mocks the Error method.
@@ -214,7 +214,7 @@ func (m *MockLogger) Error(msg string, fields ...zap.Field) {
 	for _, field := range fields {
 		args = append(args, field)
 	}
-	m.Called(args...)
+	m.Mock.Called(args...)
 }
 
 // Fatal mocks the Fatal method.
@@ -223,13 +223,17 @@ func (m *MockLogger) Fatal(msg string, fields ...zap.Field) {
 	for _, field := range fields {
 		args = append(args, field)
 	}
-	m.Called(args...)
+	m.Mock.Called(args...)
 }
 
 // With mocks the With method.
 func (m *MockLogger) With(fields ...zap.Field) interfaces.Logger {
-	args := m.Called(fields)
-	return args.Get(0).(interfaces.Logger)
+	args := []any{}
+	for _, field := range fields {
+		args = append(args, field)
+	}
+	m.Mock.Called(args...)
+	return args[0].(interfaces.Logger)
 }
 
 // TestLogger creates a test logger for use in tests.
@@ -269,17 +273,17 @@ func CreateMockPayReq(amount int64, memo string) *lnrpc.PayReq {
 // CreateMockGetInfoResponse creates a mock GetInfoResponse for testing.
 func CreateMockGetInfoResponse() *lnrpc.GetInfoResponse {
 	return &lnrpc.GetInfoResponse{
-		Version:           "0.17.0-beta commit=v0.17.0-beta",
-		CommitHash:        "mock_commit_hash",
-		IdentityPubkey:    "mock_identity_pubkey_66_chars_long_hex_encoded_exactly",
-		Alias:             "MockTestNode",
-		Color:             "#3399ff",
-		NumPendingChannels: 0,
-		NumActiveChannels:  2,
+		Version:             "0.17.0-beta commit=v0.17.0-beta",
+		CommitHash:          "mock_commit_hash",
+		IdentityPubkey:      "mock_identity_pubkey_66_chars_long_hex_encoded_exactly",
+		Alias:               "MockTestNode",
+		Color:               "#3399ff",
+		NumPendingChannels:  0,
+		NumActiveChannels:   2,
 		NumInactiveChannels: 0,
-		NumPeers:           2,
-		BlockHeight:        800000,
-		BlockHash:          "mock_block_hash_64_chars_long_hex_encoded_exactly_here",
+		NumPeers:            2,
+		BlockHeight:         800000,
+		BlockHash:           "mock_block_hash_64_chars_long_hex_encoded_exactly_here",
 		BestHeaderTimestamp: 1692633600,
 		SyncedToChain:       true,
 		SyncedToGraph:       true,
@@ -324,7 +328,7 @@ func AssertContains(t *testing.T, str, substr string) {
 		t.Fatalf("String is empty")
 	}
 	if len(substr) == 0 {
-		t.Fatalf("Substring is empty") 
+		t.Fatalf("Substring is empty")
 	}
 	// This is a simplified version - in production use strings.Contains
 	if str == "" || substr == "" {
@@ -347,7 +351,7 @@ func NewMockMCPServer() *MockMCPServer {
 
 // AddTool mocks the AddTool method and stores the tool for verification.
 func (m *MockMCPServer) AddTool(tool any, handler any) {
-	m.Called(tool, handler)
+	m.Mock.Called(tool, handler)
 	// Store tool for verification in tests
 	if t, ok := tool.(interface{ GetName() string }); ok {
 		m.tools[t.GetName()] = tool

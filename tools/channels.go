@@ -80,7 +80,7 @@ func (s *ChannelService) HandleListChannels(ctx context.Context,
 
 	channelList := make([]map[string]any, len(channels.Channels))
 	for i, ch := range channels.Channels {
-		channelList[i] = map[string]any{
+		entry := map[string]any{
 			"active":                  ch.Active,
 			"remote_pubkey":           ch.RemotePubkey,
 			"channel_point":           ch.ChannelPoint,
@@ -96,13 +96,19 @@ func (s *ChannelService) HandleListChannels(ctx context.Context,
 			"total_satoshis_received": ch.TotalSatoshisReceived,
 			"num_updates":             ch.NumUpdates,
 			"pending_htlcs":           len(ch.PendingHtlcs),
-			"csv_delay":               ch.CsvDelay,
 			"private":                 ch.Private,
 			"initiator":               ch.Initiator,
 			"chan_status_flags":       ch.ChanStatusFlags,
-			"local_chan_reserve_sat":  ch.LocalChanReserveSat,
-			"remote_chan_reserve_sat": ch.RemoteChanReserveSat,
 		}
+
+		if local := constraintsToMap(ch.GetLocalConstraints()); local != nil {
+			entry["local_constraints"] = local
+		}
+		if remote := constraintsToMap(ch.GetRemoteConstraints()); remote != nil {
+			entry["remote_constraints"] = remote
+		}
+
+		channelList[i] = entry
 	}
 
 	return mcp.NewToolResultText(fmt.Sprintf(`{
@@ -393,8 +399,6 @@ func (s *ChannelService) HandlePendingChannels(ctx context.Context,
 	result := map[string]any{
 		"pending_open_channels": formatPendingOpenChannels(
 			pending.PendingOpenChannels),
-		"pending_closing_channels": formatPendingClosingChannels(
-			pending.PendingClosingChannels),
 		"pending_force_closing_channels": formatPendingForceClosingChannels(
 			pending.PendingForceClosingChannels),
 		"waiting_close_channels": formatWaitingCloseChannels(
@@ -420,17 +424,19 @@ func formatPendingOpenChannels(
 	return result
 }
 
-// FormatPendingClosingChannels formats pending closing channel data for JSON output.
-func formatPendingClosingChannels(
-	channels []*lnrpc.PendingChannelsResponse_ClosedChannel) []map[string]any {
-	result := make([]map[string]any, len(channels))
-	for i, ch := range channels {
-		result[i] = map[string]any{
-			"channel":      formatPendingChannel(ch.Channel),
-			"closing_txid": ch.ClosingTxid,
-		}
+func constraintsToMap(c *lnrpc.ChannelConstraints) map[string]any {
+	if c == nil {
+		return nil
 	}
-	return result
+
+	return map[string]any{
+		"csv_delay":            c.CsvDelay,
+		"chan_reserve_sat":     c.ChanReserveSat,
+		"dust_limit_sat":       c.DustLimitSat,
+		"max_pending_amt_msat": c.MaxPendingAmtMsat,
+		"min_htlc_msat":        c.MinHtlcMsat,
+		"max_accepted_htlcs":   c.MaxAcceptedHtlcs,
+	}
 }
 
 // FormatPendingForceClosingChannels formats force closing channel data for JSON output.

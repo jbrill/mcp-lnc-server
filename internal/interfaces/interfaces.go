@@ -1,8 +1,5 @@
-// Package interfaces defines the core interfaces for the MCP LNC server.
-//
-// Following Go best practices, we define interfaces here that are.
-// Implemented by concrete types. This allows for better testing, dependency.
-// Injection, and loose coupling between components.
+// Package interfaces defines the core interfaces for the MCP LNC server. It
+// enables loose coupling, dependency injection, and easier testing.
 package interfaces
 
 import (
@@ -11,14 +8,13 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
-// Logger defines the logging interface used throughout the application.
-//
-// This allows us to swap out logging implementations or mock for.
-// Testing.
+// Logger defines the logging interface used throughout the application. It makes
+// swapping implementations or providing mocks straightforward.
 type Logger interface {
 	Debug(msg string, fields ...zap.Field)
 	Info(msg string, fields ...zap.Field)
@@ -28,10 +24,8 @@ type Logger interface {
 	With(fields ...zap.Field) Logger
 }
 
-// LightningClient defines the interface for Lightning Network operations.
-//
-// This wraps the LND gRPC client to allow for easier testing and.
-// Mocking.
+// LightningClient defines the interface for Lightning Network operations. It
+// wraps the LND gRPC client to simplify testing and mocking.
 type LightningClient interface {
 	GetInfo(ctx context.Context,
 		req *lnrpc.GetInfoRequest) (*lnrpc.GetInfoResponse, error)
@@ -110,8 +104,7 @@ type Service interface {
 }
 
 // ToolHandler defines the function signature for MCP tool handlers.
-type ToolHandler func(
-	context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+type ToolHandler = server.ToolHandlerFunc
 
 // ServiceTool represents an MCP tool with its handler.
 type ServiceTool struct {
@@ -135,7 +128,7 @@ type ServiceManager interface {
 //
 // This allows us to easily mock the MCP server for testing.
 type MCPServer interface {
-	AddTool(tool mcp.Tool, handler ToolHandler)
+	AddTool(tool mcp.Tool, handler server.ToolHandlerFunc)
 }
 
 // LightningClients holds all the Lightning Network client interfaces.

@@ -64,11 +64,12 @@ func (s *InvoiceService) HandleCreateInvoice(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Create request context with tracing
 	reqCtx := lnccontext.New(ctx, "create_invoice", 30*time.Second)
+	defer reqCtx.Cancel()
 	logger := logging.LogWithContext(reqCtx)
-	
+
 	logger.Info("Creating Lightning invoice",
 		zap.Any("params", request.Params.Arguments))
-	
+
 	if s.LightningClient == nil {
 		logger.Error("Lightning client not available")
 		return mcp.NewToolResultError(
@@ -114,7 +115,7 @@ func (s *InvoiceService) HandleCreateInvoice(ctx context.Context,
 		return mcp.NewToolResultError(fmt.Sprintf(
 			"Failed to create invoice: %v", err)), nil
 	}
-	
+
 	logger.Info("Invoice created successfully",
 		zap.String("payment_hash", hex.EncodeToString(invoice.RHash)))
 
@@ -163,10 +164,11 @@ func (s *InvoiceService) HandleDecodeInvoice(ctx context.Context,
 	request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Create request context with tracing
 	reqCtx := lnccontext.New(ctx, "decode_invoice", 15*time.Second)
+	defer reqCtx.Cancel()
 	logger := logging.LogWithContext(reqCtx)
-	
+
 	logger.Info("Decoding Lightning invoice")
-	
+
 	if s.LightningClient == nil {
 		logger.Error("Lightning client not available")
 		return mcp.NewToolResultError(
@@ -193,7 +195,7 @@ func (s *InvoiceService) HandleDecodeInvoice(ctx context.Context,
 		return mcp.NewToolResultError(fmt.Sprintf(
 			"Failed to decode invoice: %v", err)), nil
 	}
-	
+
 	logger.Info("Invoice decoded successfully",
 		zap.String("destination", payReq.Destination))
 
